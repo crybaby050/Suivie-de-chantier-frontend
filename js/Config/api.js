@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://ton-backend-chantier.onrender.com";
+export const API_BASE_URL = "https://suivie-de-chantier-backend.onrender.com";
 
 export const ENDPOINTS = {
   utilisateurs:     `${API_BASE_URL}/utilisateurs`,
