@@ -1,10 +1,10 @@
 import { renderSidebar, initSidebar } from "./Components/sidebar.js";
-import { renderNavbar, initNavbar } from "./Components/savbar.js";
-import { navigate } from "./Router.js";
+import { renderNavbar, initNavbar }   from "./Components/navbar.js";
+import { navigate }                   from "./router.js";
 import { requireAuth, isAdmin, isChef, isOuvrier, isClient } from "./Utils/auth.js";
-import { logout } from "./Services/authService.js";
-import { renderLoginPage } from "./Pages/LoginPage.js";
-import { showToast } from "./Components/Toast.js";
+import { logout }                     from "./Services/authService.js";
+import { renderLoginPage }            from "./Pages/loginPage.js";
+import { showToast }                  from "./Components/toast.js";
 
 function mountLayout() {
     document.getElementById("sidebarRoot").innerHTML = renderSidebar();

@@ -1,10 +1,16 @@
-import { login } from "../services/authService.js";
-import { showToast } from "../components/toast.js";
+import { login }     from "../Services/authService.js";
+import { showToast } from "../Components/toast.js";
 
 export function renderLoginPage() {
-    const app = document.getElementById("app");
+  const app = document.getElementById("app");
 
-    app.innerHTML = `
+  // Supprimer le layout pour la page de login
+  document.getElementById("sidebarRoot").innerHTML = "";
+  document.getElementById("navbarRoot").innerHTML  = "";
+
+  app.className = "flex min-h-screen w-full";
+
+  app.innerHTML = `
     <div class="flex min-h-screen w-full">
 
       <!-- Colonne gauche — visuel -->
@@ -25,43 +31,23 @@ export function renderLoginPage() {
           <span class="text-lg font-extrabold tracking-tight text-white">Suivi Chantier</span>
         </div>
 
-        <!-- Stats centrales -->
+        <!-- Texte central -->
         <div class="relative space-y-6">
           <div>
             <h2 class="text-4xl font-black leading-tight text-white">
               Pilotez vos chantiers<br/>
               <span class="text-accent">en temps réel.</span>
             </h2>
-            <p class="mt-3 text-sm leading-6 text-white/70">
-              Suivez l'avancement de vos projets, gérez vos équipes et anticipez les blocages depuis une seule plateforme.
+            <p class="mt-4 text-sm leading-7 text-white/70">
+              Suivez l'avancement de vos projets, gérez vos équipes et anticipez les blocages depuis une seule plateforme. Une solution pensée pour les professionnels du BTP.
             </p>
-          </div>
-
-          <!-- Cards stats -->
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
-              <p class="text-3xl font-black text-accent">98%</p>
-              <p class="mt-1 text-xs font-semibold text-white/70">Taux de livraison</p>
-            </div>
-            <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
-              <p class="text-3xl font-black text-accent">+240</p>
-              <p class="mt-1 text-xs font-semibold text-white/70">Chantiers suivis</p>
-            </div>
-            <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
-              <p class="text-3xl font-black text-accent">4</p>
-              <p class="mt-1 text-xs font-semibold text-white/70">Rôles disponibles</p>
-            </div>
-            <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
-              <p class="text-3xl font-black text-accent">100%</p>
-              <p class="mt-1 text-xs font-semibold text-white/70">Temps réel</p>
-            </div>
           </div>
 
           <!-- Carte phase exemple -->
           <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="h-1 w-1 rounded-full bg-accent"></div>
+                <div class="h-2 w-2 rounded-full bg-accent"></div>
                 <div>
                   <p class="text-sm font-bold text-white">Phase 2 — Fondations</p>
                   <p class="text-xs text-white/60">Assignée à Chef de chantier</p>
@@ -166,77 +152,75 @@ export function renderLoginPage() {
     </div>
   `;
 
-    bindLoginEvents();
+  bindLoginEvents();
 }
 
 function bindLoginEvents() {
-    const form = document.getElementById("loginForm");
-    const emailInput = document.getElementById("loginEmail");
-    const passInput = document.getElementById("loginPassword");
-    const btn = document.getElementById("loginBtn");
-    const btnText = document.getElementById("loginBtnText");
-    const toggleBtn = document.getElementById("togglePassword");
-    const toggleIcon = document.getElementById("togglePasswordIcon");
+  const form       = document.getElementById("loginForm");
+  const emailInput = document.getElementById("loginEmail");
+  const passInput  = document.getElementById("loginPassword");
+  const btn        = document.getElementById("loginBtn");
+  const btnText    = document.getElementById("loginBtnText");
+  const toggleBtn  = document.getElementById("togglePassword");
+  const toggleIcon = document.getElementById("togglePasswordIcon");
 
-    // Toggle password
-    toggleBtn.addEventListener("click", () => {
-        const isHidden = passInput.type === "password";
-        passInput.type = isHidden ? "text" : "password";
-        toggleIcon.className = isHidden ? "fa-solid fa-eye-slash text-sm" : "fa-solid fa-eye text-sm";
-    });
+  toggleBtn.addEventListener("click", () => {
+    const isHidden = passInput.type === "password";
+    passInput.type = isHidden ? "text" : "password";
+    toggleIcon.className = isHidden ? "fa-solid fa-eye-slash text-sm" : "fa-solid fa-eye text-sm";
+  });
 
-    // Clear erreurs à la saisie
-    emailInput.addEventListener("input", () => clearError("loginEmail", "loginEmailError"));
-    passInput.addEventListener("input", () => clearError("loginPassword", "loginPasswordError"));
+  emailInput.addEventListener("input", () => clearError("loginEmail", "loginEmailError"));
+  passInput.addEventListener("input",  () => clearError("loginPassword", "loginPasswordError"));
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-        const email = emailInput.value.trim();
-        const password = passInput.value;
-        let valid = true;
+    const email    = emailInput.value.trim();
+    const password = passInput.value;
+    let valid = true;
 
-        if (!email) {
-            showFieldError("loginEmail", "loginEmailError", "L'email est obligatoire.");
-            valid = false;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            showFieldError("loginEmail", "loginEmailError", "Adresse e-mail invalide.");
-            valid = false;
-        }
+    if (!email) {
+      showFieldError("loginEmail", "loginEmailError", "L'email est obligatoire.");
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showFieldError("loginEmail", "loginEmailError", "Adresse e-mail invalide.");
+      valid = false;
+    }
 
-        if (!password) {
-            showFieldError("loginPassword", "loginPasswordError", "Le mot de passe est obligatoire.");
-            valid = false;
-        }
+    if (!password) {
+      showFieldError("loginPassword", "loginPasswordError", "Le mot de passe est obligatoire.");
+      valid = false;
+    }
 
-        if (!valid) return;
+    if (!valid) return;
 
-        btn.disabled = true;
-        btnText.textContent = "Connexion...";
+    btn.disabled = true;
+    btnText.textContent = "Connexion...";
 
-        try {
-            await login(email, password);
-            showToast("Bienvenue !");
-            window.dispatchEvent(new CustomEvent("app:login"));
-        } catch (error) {
-            showToast(error.message, "error");
-            btn.disabled = false;
-            btnText.textContent = "Login";
-        }
-    });
+    try {
+      await login(email, password);
+      showToast("Bienvenue !");
+      window.dispatchEvent(new CustomEvent("app:login"));
+    } catch (error) {
+      showToast(error.message, "error");
+      btn.disabled = false;
+      btnText.textContent = "Login";
+    }
+  });
 }
 
 function showFieldError(inputId, errorId, message) {
-    const input = document.getElementById(inputId);
-    const error = document.getElementById(errorId);
-    input.classList.add("!border-bloque", "focus:!ring-bloque/20");
-    error.textContent = message;
-    error.classList.remove("hidden");
+  const input = document.getElementById(inputId);
+  const error = document.getElementById(errorId);
+  input.classList.add("!border-bloque", "focus:!ring-bloque/20");
+  error.textContent = message;
+  error.classList.remove("hidden");
 }
 
 function clearError(inputId, errorId) {
-    const input = document.getElementById(inputId);
-    const error = document.getElementById(errorId);
-    input.classList.remove("!border-bloque", "focus:!ring-bloque/20");
-    error.classList.add("hidden");
+  const input = document.getElementById(inputId);
+  const error = document.getElementById(errorId);
+  input.classList.remove("!border-bloque", "focus:!ring-bloque/20");
+  error.classList.add("hidden");
 }
