@@ -1,13 +1,12 @@
-import { showToast } from "./Components/toast.js";
+import { showToast }               from "./Components/toast.js";
 import { requireAuth, isAdmin, isChef, isOuvrier, isClient, canManage } from "./Utils/auth.js";
-import { renderLoginPage } from "./Pages/LoginPage.js";
-import { renderDashboardPage } from "./Pages/dashboardPage.js";
-import { renderProjetsPage } from "./Pages/projetsPage.js";
-import { renderUtilisateursPage } from "./Pages/utilisateursPage.js";
-import { renderMateriauxPage } from "./Pages/materiauxPage.js";
-import { renderRapportsPage } from "./Pages/rapportsPage.js";
-import { renderSignalementsPage } from "./pages/SignalementsPage.js";
-import { renderTachesPage } from "./Pages/tachesPage.js";
+import { renderDashboardPage }     from "./Pages/dashboardPage.js";
+import { renderProjetsPage }       from "./Pages/projetsPage.js";
+import { renderUtilisateursPage }  from "./Pages/utilisateursPage.js";
+import { renderMateriauxPage }     from "./Pages/materiauxPage.js";
+import { renderRapportsPage }      from "./Pages/rapportsPage.js";
+import { renderSignalementsPage }  from "./Pages/signalementsPage.js";
+import { renderTachesPage }        from "./Pages/tachesPage.js";
 
 const routes = {
     dashboard: renderDashboardPage,
