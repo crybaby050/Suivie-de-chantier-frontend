@@ -35,5 +35,5 @@ export function runBrickLoader({ container, delay = 55, loop = true, onComplete 
     }
     step();
 
-    return () => { stopped = true; }; // pour arrêter l'animation si la page change vite
+    return () => { stopped = true; };
 }
