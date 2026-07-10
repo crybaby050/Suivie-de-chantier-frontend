@@ -80,10 +80,16 @@ export async function navigate(page = "dashboard") {
       ${brickLoaderHTML(3, 6)}
     </div>`;
 
+    const MIN_LOADER_TIME = 900; // ms
+    const startTime = performance.now();
     const stopLoader = runBrickLoader({ container: app, delay: 55 });
 
     try {
         await route();
+        const elapsed = performance.now() - startTime;
+        if (elapsed < MIN_LOADER_TIME) {
+            await new Promise((r) => setTimeout(r, MIN_LOADER_TIME - elapsed));
+        }
         stopLoader();
     } catch (error) {
         stopLoader();
