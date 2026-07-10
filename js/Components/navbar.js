@@ -1,18 +1,18 @@
 import { getSession, isAdmin, isChef, isOuvrier, isClient } from "../Utils/auth.js";
 
 export function renderNavbar() {
-  const session = getSession();
+    const session = getSession();
 
-  const ROLE_BADGES = {
-    "Admin":            `<span class="rounded-full bg-role-admin/10 px-2.5 py-1 text-xs font-bold text-role-admin">Admin</span>`,
-    "Chef de chantier": `<span class="rounded-full bg-role-chef/10 px-2.5 py-1 text-xs font-bold text-role-chef">Chef</span>`,
-    "Ouvrier":          `<span class="rounded-full bg-role-ouvrier/10 px-2.5 py-1 text-xs font-bold text-role-ouvrier">Ouvrier</span>`,
-    "Client":           `<span class="rounded-full bg-role-client/10 px-2.5 py-1 text-xs font-bold text-role-client">Client</span>`,
-  };
+    const ROLE_BADGES = {
+        "Admin": `<span class="rounded-full bg-role-admin/10 px-2.5 py-1 text-xs font-bold text-role-admin">Admin</span>`,
+        "Chef de chantier": `<span class="rounded-full bg-role-chef/10 px-2.5 py-1 text-xs font-bold text-role-chef">Chef</span>`,
+        "Ouvrier": `<span class="rounded-full bg-role-ouvrier/10 px-2.5 py-1 text-xs font-bold text-role-ouvrier">Ouvrier</span>`,
+        "Client": `<span class="rounded-full bg-role-client/10 px-2.5 py-1 text-xs font-bold text-role-client">Client</span>`,
+    };
 
-  const roleBadge = ROLE_BADGES[session?.roleGlobal] ?? "";
+    const roleBadge = ROLE_BADGES[session?.roleGlobal] ?? "";
 
-  return `
+    return `
     <header class="fixed inset-x-0 top-0 z-20 h-16 bg-primary shadow-soft">
       <div class="flex h-full items-center gap-3 px-4 sm:px-6">
 
@@ -94,10 +94,10 @@ export function renderNavbar() {
 }
 
 export function initNavbar() {
-  const toggle = document.getElementById("mobileSearchToggle");
-  const bar    = document.getElementById("mobileSearchBar");
+    const toggle = document.getElementById("mobileSearchToggle");
+    const bar = document.getElementById("mobileSearchBar");
 
-  toggle?.addEventListener("click", () => {
-    bar.classList.toggle("hidden");
-  });
+    toggle?.addEventListener("click", () => {
+        bar.classList.toggle("hidden");
+    });
 }
