@@ -1,11 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suivi Chantier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0B3C5D',
+                        secondary: '#1D6F8C',
+                        accent: '#E8A33D',
+                        fond: '#F4F1EC',
+                        carte: '#FFFFFF',
+                        texte: '#2B2B28',
+                        muted: '#6B675E',
+                        bordure: '#D8D3C8',
+                        succes: '#3E8E5A',
+                        attente: '#E8A33D',
+                        bloque: '#C94A3C',
+                        inactif: '#8A8578',
+                        role: {
+                            admin: '#5B3A9E',
+                            chef: '#0B3C5D',
+                            ouvrier: '#C97A2B',
+                            client: '#3E8E5A',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        soft: '0 2px 12px 0 rgba(11,60,93,0.07)',
+                        card: '0 1px 4px 0 rgba(11,60,93,0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
 </head>
-<body>
-    
+
+<body class="min-h-screen bg-fond font-sans text-texte antialiased">
+
+    <div id="toast"
+        class="pointer-events-none fixed right-4 top-4 z-50 hidden max-w-sm rounded-2xl px-4 py-3 text-sm font-semibold shadow-2xl sm:right-5 sm:top-5">
+    </div>
+    <div id="modalRoot"></div>
+    <div id="layout" class="flex min-h-screen">
+        <div id="sidebarRoot"></div>
+        <div id="sidebarOverlay" class="fixed inset-0 z-30 hidden bg-texte/40 backdrop-blur-sm lg:hidden"></div>
+        <div id="main" class="flex flex-1 flex-col min-w-0">
+            <div id="navbarRoot"></div>
+            <main id="app" class="flex-1 p-4 pt-20 sm:p-6 sm:pt-20 lg:p-8 lg:pt-20">
+            </main>
+        </div>
+    </div>
+
+    <script type="module" src="./js/App.js"></script>
 </body>
+
 </html>
