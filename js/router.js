@@ -1,12 +1,14 @@
-import { showToast }               from "./Components/toast.js";
+import { showToast } from "./Components/toast.js";
 import { requireAuth, isAdmin, isChef, isOuvrier, isClient, canManage } from "./Utils/auth.js";
-import { renderDashboardPage }     from "./Pages/dashboardPage.js";
-import { renderProjetsPage }       from "./Pages/projetsPage.js";
-import { renderUtilisateursPage }  from "./Pages/utilisateursPage.js";
-import { renderMateriauxPage }     from "./Pages/materiauxPage.js";
-import { renderRapportsPage }      from "./Pages/rapportsPage.js";
-import { renderSignalementsPage }  from "./Pages/signalementsPage.js";
-import { renderTachesPage }        from "./Pages/tachesPage.js";
+import { renderDashboardPage } from "./Pages/dashboardPage.js";
+import { renderProjetsPage } from "./Pages/projetsPage.js";
+import { renderUtilisateursPage } from "./Pages/utilisateursPage.js";
+import { renderMateriauxPage } from "./Pages/materiauxPage.js";
+import { renderRapportsPage } from "./Pages/rapportsPage.js";
+import { renderSignalementsPage } from "./Pages/signalementsPage.js";
+import { renderTachesPage } from "./Pages/tachesPage.js";
+import { brickLoaderHTML, runBrickLoader } from "./Components/brickLoader.js";
+
 
 const routes = {
     dashboard: renderDashboardPage,
@@ -75,16 +77,16 @@ export async function navigate(page = "dashboard") {
     // Loader
     app.innerHTML = `
     <div class="grid min-h-[60vh] place-items-center">
-      <div class="flex flex-col items-center gap-3">
-        <div class="h-10 w-10 animate-spin rounded-full border-4 border-bordure border-t-primary"></div>
-        <p class="text-sm font-semibold text-muted">Chargement...</p>
-      </div>
-    </div>
-  `;
+      ${brickLoaderHTML(3, 6)}
+    </div>`;
+
+    const stopLoader = runBrickLoader({ container: app, delay: 55 });
 
     try {
         await route();
+        stopLoader();
     } catch (error) {
+        stopLoader();
         app.innerHTML = `
       <div class="rounded-2xl border border-bloque/20 bg-carte p-6 shadow-card sm:p-8">
         <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bloque/10 text-bloque">
