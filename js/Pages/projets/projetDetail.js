@@ -2,7 +2,7 @@ import { escapeHtml } from "../../Utils/html.js";
 import { showToast } from "../../Components/toast.js";
 import { openConfirm } from "../../Components/modal.js";
 import { openDrawer, closeDrawer } from "../../Components/drawer.js";
-import { canManage } from "../../Utils/auth.js";
+import { canManage, isAdmin } from "../../Utils/auth.js";
 import { getProjets, updateProjet } from "../../Services/projetService.js";
 import { getStatutBadge, formatDate, getInitials } from "./projetsHelpers.js";
 import { allUtilisateurs } from "./projetsState.js";
@@ -65,38 +65,38 @@ export async function renderProjetDetail(projetId) {
     }
 
     async function ouvrirDrawerArchives() {
-    const tousLesProjets = await getProjets();
-    const projetsArchives = tousLesProjets.filter(p => p.statutProjet === "Suspendu");
+        const tousLesProjets = await getProjets();
+        const projetsArchives = tousLesProjets.filter(p => p.statutProjet === "Suspendu");
 
-    openDrawer({
-        title: "Projets archivés",
-        icon: "fa-box-archive",
-        body: renderArchivesBody(projetsArchives),
-        onMount: panel => {
-            panel.querySelectorAll(".btn-voir-archive").forEach(btn => {
-                btn.addEventListener("click", async () => {
-                    closeDrawer();
-                    await renderProjetDetail(btn.dataset.projetId);
-                });
-            });
-
-            panel.querySelectorAll(".btn-restaurer-archive").forEach(btn => {
-                btn.addEventListener("click", async () => {
-                    const id = btn.dataset.projetId;
-                    const p = projetsArchives.find(x => x.id === id);
-                    try {
-                        await updateProjet(id, { ...p, statutProjet: "En cours" });
-                        showToast("Projet restauré.");
+        openDrawer({
+            title: "Projets archivés",
+            icon: "fa-box-archive",
+            body: renderArchivesBody(projetsArchives),
+            onMount: panel => {
+                panel.querySelectorAll(".btn-voir-archive").forEach(btn => {
+                    btn.addEventListener("click", async () => {
                         closeDrawer();
-                        if (id === projetId) await reload();
-                    } catch (err) {
-                        showToast(err.message, "error");
-                    }
+                        await renderProjetDetail(btn.dataset.projetId);
+                    });
                 });
-            });
-        },
-    });
-}
+
+                panel.querySelectorAll(".btn-restaurer-archive").forEach(btn => {
+                    btn.addEventListener("click", async () => {
+                        const id = btn.dataset.projetId;
+                        const p = projetsArchives.find(x => x.id === id);
+                        try {
+                            await updateProjet(id, { ...p, statutProjet: "En cours" });
+                            showToast("Projet restauré.");
+                            closeDrawer();
+                            if (id === projetId) await reload();
+                        } catch (err) {
+                            showToast(err.message, "error");
+                        }
+                    });
+                });
+            },
+        });
+    }
 
     function renderDetail() {
         app.innerHTML = `
@@ -140,10 +140,12 @@ export async function renderProjetDetail(projetId) {
       <i class="fa-solid fa-file-lines text-xs"></i>
       <span class="hidden sm:inline">Rapport</span>
     </button>
-    <button id="btnNewProjet2" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
-      <i class="fa-solid fa-plus text-xs"></i>
-      <span>Nouveau projet</span>
-    </button>
+    ${isAdmin() ? `
+      <button id="btnNewProjet2" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
+        <i class="fa-solid fa-plus text-xs"></i>
+        <span>Nouveau projet</span>
+      </button>
+    ` : ""}
   </div>
 ` : ""}
         </div>
@@ -271,6 +273,13 @@ export async function renderProjetDetail(projetId) {
             openPhaseForm(projetId, reload);
         });
 
+        document.getElementById("btnNewProjet2")?.addEventListener("click", () => {
+            openProjetForm(null, async () => {
+                const { renderProjetsPage } = await import("./projetsPage.js");
+                await renderProjetsPage();
+            });
+        });
+
         // Filtres phases
         document.querySelectorAll(".phase-filter-btn").forEach(btn => {
             btn.addEventListener("click", () => {
@@ -321,14 +330,17 @@ function renderOverviewTab(projet, chef, client, membres) {
             </div>
           </div>
           ${canManage() ? `
-            <div class="mt-4 flex gap-2">
-              <button id="btnModifier" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
-                <i class="fa-solid fa-pen text-xs"></i> Modifier
-              <button id="btnArchiverProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
-                  <i class="fa-solid fa-box-archive text-xs"></i> Archiver
-                </button>
-            </div>
-          ` : ""}
+  <div class="mt-4 flex gap-2">
+    ${isAdmin() ? `
+      <button id="btnModifier" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
+        <i class="fa-solid fa-pen text-xs"></i> Modifier
+      </button>
+    ` : ""}
+    <button id="btnArchiverProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
+      <i class="fa-solid fa-box-archive text-xs"></i> Archiver
+    </button>
+  </div>
+` : ""}
         </div>
 
         ${projet.description ? `
