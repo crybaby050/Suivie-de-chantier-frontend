@@ -1,7 +1,7 @@
 import { showToast } from "./Components/toast.js";
 import { requireAuth, isAdmin, isChef, isOuvrier, isClient, canManage } from "./Utils/auth.js";
 import { renderDashboardPage } from "./Pages/dashboardPage.js";
-import { renderProjetsPage } from "./Pages/projetsPage.js";
+import { renderProjetsPage } from "./Pages/projets/projetsPage.js";
 import { renderUtilisateursPage } from "./Pages/utilisateursPage.js";
 import { renderMateriauxPage } from "./Pages/materiauxPage.js";
 import { renderRapportsPage } from "./Pages/rapportsPage.js";
