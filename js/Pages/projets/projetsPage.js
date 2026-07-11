@@ -6,10 +6,15 @@ import { getStatutBadge, formatDate } from "./projetsHelpers.js";
 import { allProjets, allUtilisateurs, setAllProjets, setAllUtilisateurs } from "./projetsState.js";
 import { openProjetForm } from "./projetForm.js";
 import { renderProjetDetail } from "./projetDetail.js";
+import { getPhases } from "../../Services/phaseService.js";
+import { getTaches } from "../../Services/tacheService.js";
+import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 
 let currentFilter = "Tout";
 let currentView = "liste";
 let searchQuery = "";
+
+let progressionParProjet = {};
 
 export async function renderProjetsPage() {
     const app = document.getElementById("app");
@@ -23,14 +28,30 @@ export async function renderProjetsPage() {
     </div>
   `;
 
-    const [projets, utilisateurs] = await Promise.all([
+    const [projets, utilisateurs, phases, taches] = await Promise.all([
         getProjets(),
         getUtilisateurs(),
+        getPhases(),
+        getTaches(),
     ]);
     setAllProjets(projets);
     setAllUtilisateurs(utilisateurs);
+    progressionParProjet = calculerProgressionParProjet(projets, phases, taches);
 
     renderPage();
+}
+
+function calculerProgressionParProjet(projets, phases, taches) {
+    const map = {};
+    projets.forEach(projet => {
+        const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
+        const phasesAvecProgression = phasesDuProjet.map(phase => ({
+            ...phase,
+            progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
+        }));
+        map[projet.id] = calculerProgressionProjet(phasesAvecProgression);
+    });
+    return map;
 }
 
 function renderPage() {
@@ -70,8 +91,8 @@ function renderPage() {
             <button
               class="filter-btn rounded-xl px-4 py-2 text-sm font-bold transition
                 ${currentFilter === f
-                    ? "bg-primary text-white shadow-soft"
-                    : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
+            ? "bg-primary text-white shadow-soft"
+            : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
               data-filter="${f}"
             >
               ${f}
@@ -136,11 +157,11 @@ function renderListeView(projets) {
           </thead>
           <tbody>
             ${projets.map(projet => {
-                const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
-                const statut = getStatutBadge(projet.statutProjet);
-                const progression = projet.progression ?? 0;
+        const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
+        const statut = getStatutBadge(projet.statutProjet);
+        const progression = progressionParProjet[projet.id] ?? 0;
 
-                return `
+        return `
                 <tr class="border-t border-bordure transition hover:bg-fond/50">
                   <td class="px-5 py-4">
                     <div class="flex items-center gap-3">
@@ -177,7 +198,7 @@ function renderListeView(projets) {
                   </td>
                 </tr>
               `;
-            }).join("")}
+    }).join("")}
           </tbody>
         </table>
       </div>
@@ -200,7 +221,7 @@ function renderCardsView(projets) {
       ${projets.map(projet => {
         const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
         const statut = getStatutBadge(projet.statutProjet);
-        const progression = projet.progression ?? 0;
+        const progression = progressionParProjet[projet.id] ?? 0;
 
         return `
           <div class="flex flex-col rounded-2xl border border-bordure bg-carte p-5 shadow-card transition hover:shadow-soft">

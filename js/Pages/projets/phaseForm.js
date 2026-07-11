@@ -58,17 +58,21 @@ export function openPhaseForm(projetId, onSuccess, phase = null) {
             />
           </div>
         </div>
-        <div>
-          <label for="phaseStatut" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Statut</label>
-          <select id="phaseStatut"
-            class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="En attente" ${phase?.statutPhase === "En attente" ? "selected" : ""}>En attente</option>
-            <option value="En cours"   ${phase?.statutPhase === "En cours" ? "selected" : ""}>En cours</option>
-            <option value="Terminer"   ${phase?.statutPhase === "Terminer" ? "selected" : ""}>Terminer</option>
-            <option value="Bloquer"    ${phase?.statutPhase === "Bloquer" ? "selected" : ""}>Bloquer</option>
-          </select>
-        </div>
+        ${phase ? `
+          <div>
+            <label for="phaseStatut" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Statut</label>
+            <select id="phaseStatut"
+              class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="En attente" ${phase?.statutPhase === "En attente" ? "selected" : ""}>En attente</option>
+              <option value="En cours"   ${phase?.statutPhase === "En cours" ? "selected" : ""}>En cours</option>
+              <option value="Terminer"   ${phase?.statutPhase === "Terminer" ? "selected" : ""}>Terminer</option>
+              <option value="Bloquer"    ${phase?.statutPhase === "Bloquer" ? "selected" : ""}>Bloquer</option>
+            </select>
+          </div>
+        ` : `
+          <input type="hidden" id="phaseStatut" value="En attente" />
+        `}
       </div>
     `,
         onMount: modal => { validator = createFormValidator(modal, PHASE_SCHEMA); },

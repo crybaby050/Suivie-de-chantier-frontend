@@ -61,19 +61,23 @@ function projetFormBody(projet = null) {
           />
         </div>
       </div>
-      <div>
-        <label for="projetStatut" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
-          Statut
-        </label>
-        <select id="projetStatut"
-          class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="Planifier"  ${projet?.statutProjet === "Planifier" ? "selected" : ""}>Planifier</option>
-          <option value="En cours"   ${projet?.statutProjet === "En cours" ? "selected" : ""}>En cours</option>
-          <option value="Suspendu"   ${projet?.statutProjet === "Suspendu" ? "selected" : ""}>Suspendu</option>
-          <option value="Terminer"   ${projet?.statutProjet === "Terminer" ? "selected" : ""}>Terminer</option>
-        </select>
-      </div>
+      ${projet ? `
+        <div>
+          <label for="projetStatut" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+            Statut
+          </label>
+          <select id="projetStatut"
+            class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="Planifier"  ${projet?.statutProjet === "Planifier" ? "selected" : ""}>Planifier</option>
+            <option value="En cours"   ${projet?.statutProjet === "En cours" ? "selected" : ""}>En cours</option>
+            <option value="Suspendu"   ${projet?.statutProjet === "Suspendu" ? "selected" : ""}>Suspendu</option>
+            <option value="Terminer"   ${projet?.statutProjet === "Terminer" ? "selected" : ""}>Terminer</option>
+          </select>
+        </div>
+      ` : `
+        <input type="hidden" id="projetStatut" value="Planifier" />
+      `}
     </div>
   `;
 }
