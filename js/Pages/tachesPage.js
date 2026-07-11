@@ -6,6 +6,7 @@ import { getAffectationsByUtilisateur, updateStatutAffectation } from "../Servic
 import { getPhases } from "../Services/phaseService.js";
 import { getProjets } from "../Services/projetService.js";
 import { getPhotosByTache, createPhoto } from "../Services/photoService.js";
+import { uploadImageCloudinary } from "../Services/cloudinaryService.js";
 
 // ─── État local ───────────────────────────────────────────────────────────────
 let allTaches = [];
@@ -266,21 +267,22 @@ function renderTacheCard(tache) {
 ` : ""}
 
         ${openPhotoForm === tache.id ? `
-          <div class="flex flex-col gap-2 rounded-xl bg-fond p-3 sm:flex-row">
-            <input
-              type="text"
-              class="photo-url-input flex-1 rounded-xl border border-bordure bg-carte px-3 py-2 text-xs outline-none focus:border-primary"
-              placeholder="URL de la photo (Cloudinary bientôt intégré)"
-              data-tache-id="${escapeHtml(tache.id)}"
-            />
-            <button
-              class="btn-save-photo rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary"
-              data-tache-id="${escapeHtml(tache.id)}"
-            >
-              Enregistrer
-            </button>
-          </div>
-        ` : ""}
+  <div class="flex flex-col gap-2 rounded-xl bg-fond p-3">
+    <input
+      type="file"
+      accept="image/*"
+      class="photo-file-input flex-1 rounded-xl border border-bordure bg-carte px-3 py-2 text-xs outline-none focus:border-primary"
+      data-tache-id="${escapeHtml(tache.id)}"
+    />
+    <button
+      class="btn-save-photo self-end rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary"
+      data-tache-id="${escapeHtml(tache.id)}"
+    >
+      <i class="fa-solid fa-upload text-xs"></i>
+      Envoyer
+    </button>
+  </div>
+` : ""}
       </div>
 
       <!-- Actions selon statut -->
@@ -468,34 +470,33 @@ async function handleTerminer(tacheId, affectationId, btn) {
 }
 
 async function handleAjouterPhoto(tacheId, btn) {
-    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
-    const input = card?.querySelector(".photo-url-input");
-    if (!input) return;
+  const card  = document.querySelector(`[data-tache-id="${tacheId}"]`);
+  const input = card?.querySelector(".photo-file-input");
+  if (!input) return;
 
-    const url = input.value.trim();
-    if (!url) {
-        showToast("Veuillez saisir une URL de photo.", "error");
-        return;
-    }
+  const file = input.files?.[0];
+  if (!file) {
+    showToast("Veuillez sélectionner une image.", "error");
+    return;
+  }
 
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
 
-    try {
-        // TODO: remplacer par l'upload Cloudinary une fois configuré.
-        // Pour l'instant on enregistre directement l'URL fournie.
-        await createPhoto({ tacheId, url });
+  try {
+    const url = await uploadImageCloudinary(file);
+    await createPhoto({ tacheId, url });
 
-        photosByTache[tacheId] = await getPhotosByTache(tacheId);
-        openPhotoForm = null;
+    photosByTache[tacheId] = await getPhotosByTache(tacheId);
+    openPhotoForm = null;
 
-        showToast("Photo ajoutée.");
-        renderPage();
-    } catch (err) {
-        showToast(err.message, "error");
-        btn.disabled = false;
-        btn.innerHTML = `Enregistrer`;
-    }
+    showToast("Photo ajoutée.");
+    renderPage();
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-upload text-xs"></i> Envoyer`;
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
