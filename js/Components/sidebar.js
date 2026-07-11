@@ -46,9 +46,9 @@ export function renderSidebar() {
 
   return `
     <aside
-      id="sidebar"
-      class="fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-bordure bg-carte transition-all duration-300 ease-in-out -translate-x-full lg:relative lg:translate-x-0 lg:h-auto lg:min-h-screen"
-    >
+  id="sidebar"
+  class="fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-bordure bg-carte transition-all duration-300 ease-in-out -translate-x-full lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
+>
       <!-- Header -->
       <div class="flex flex-shrink-0 items-center gap-2 border-b border-bordure px-4 py-4">
         <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary">

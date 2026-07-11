@@ -152,6 +152,7 @@ function renderOverviewTab(projet, chef, client, membres) {
     return `
     <div class="grid gap-5 lg:grid-cols-2">
       <div class="space-y-4">
+
         <div class="rounded-2xl border border-bordure bg-carte p-5 shadow-card">
           <h2 class="mb-4 text-base font-black text-texte">Projet information</h2>
           <div class="space-y-3">
@@ -183,6 +184,14 @@ function renderOverviewTab(projet, chef, client, membres) {
             </div>
           ` : ""}
         </div>
+
+        ${projet.description ? `
+          <div class="rounded-2xl border border-bordure bg-carte p-5 shadow-card">
+            <h2 class="mb-3 text-base font-black text-texte">Description</h2>
+            <p class="text-sm leading-6 text-muted">${escapeHtml(projet.description)}</p>
+          </div>
+        ` : ""}
+
       </div>
 
       <div class="space-y-4">

@@ -51,32 +51,22 @@
 
 <body class="min-h-screen bg-fond font-sans text-texte antialiased">
 
-  <!-- Toast -->
   <div id="toast" class="pointer-events-none fixed right-4 top-4 z-50 hidden max-w-sm rounded-2xl px-4 py-3 text-sm font-semibold shadow-2xl"></div>
-
-  <!-- Modal root -->
   <div id="modalRoot"></div>
 
-  <!-- Layout -->
-  <div id="layout" class="flex h-screen overflow-hidden">
+  <div id="layout" class="flex min-h-screen">
 
     <!-- Sidebar -->
     <div id="sidebarRoot"></div>
-
-    <!-- Overlay mobile -->
     <div id="sidebarOverlay" class="fixed inset-0 z-30 hidden bg-texte/40 backdrop-blur-sm lg:hidden"></div>
 
     <!-- Contenu -->
-    <div id="main" class="flex flex-1 flex-col min-w-0 overflow-hidden">
-
-      <!-- Navbar -->
+    <div id="main" class="flex flex-1 flex-col min-w-0">
       <div id="navbarRoot"></div>
-
-      <!-- Page -->
-      <main id="app" class="flex-1 overflow-y-auto p-4 pt-20 sm:p-6 sm:pt-20 lg:p-8 lg:pt-20">
+      <main id="app" class="flex-1 p-4 pt-20 sm:p-6 sm:pt-20 lg:p-8 lg:pt-20">
       </main>
-
     </div>
+
   </div>
 
   <script type="module" src="./js/app.js"></script>

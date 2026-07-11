@@ -7,6 +7,7 @@ import { createProjet, updateProjet } from "../../Services/projetService.js";
 const PROJET_SCHEMA = {
     projetNom: { rules: [Rules.required("Le nom est obligatoire."), Rules.minLength(3, "Minimum 3 caractères.")], transform: v => v.trim(), as: "nom" },
     projetAdresse: { rules: [Rules.required("L'adresse est obligatoire.")], transform: v => v.trim(), as: "adresse" },
+    projetDescription: { rules: [], transform: v => v.trim(), as: "description" },
     projetDebut: { rules: [Rules.required("La date de début est obligatoire.")], transform: v => v, as: "dateDeDebut" },
     projetFin: { rules: [Rules.required("La date de fin est obligatoire.")], transform: v => v, as: "dateDeFinPrevue" },
     projetStatut: { rules: [], transform: v => v, as: "statutProjet" },
@@ -32,6 +33,15 @@ function projetFormBody(projet = null) {
           placeholder="ex: Almadies, Dakar"
           class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
+      </div>
+      <div>
+        <label for="projetDescription" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+          Description
+        </label>
+        <textarea id="projetDescription" rows="3"
+          placeholder="Décrivez brièvement le projet..."
+          class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+        >${escapeHtml(projet?.description ?? "")}</textarea>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
