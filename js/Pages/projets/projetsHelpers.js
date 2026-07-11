@@ -17,3 +17,8 @@ export function formatDate(date) {
     if (!date) return "—";
     return new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
+
+export function getInitials(nom) {
+    if (!nom) return "?";
+    return nom.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+}
