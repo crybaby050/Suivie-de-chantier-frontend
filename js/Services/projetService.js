@@ -9,6 +9,7 @@ function normalizeProjet(data) {
         id: data.id,
         nom: String(data.nom).trim(),
         adresse: String(data.adresse ?? "").trim(),
+        description: String(data.description ?? "").trim(),
         dateDeDebut: data.dateDeDebut,
         dateDeFinPrevue: data.dateDeFinPrevue,
         statutProjet: data.statutProjet ?? "Planifier",
