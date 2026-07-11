@@ -1,8 +1,9 @@
 import { escapeHtml } from "../../Utils/html.js";
 import { showToast } from "../../Components/toast.js";
 import { openConfirm } from "../../Components/modal.js";
+import { openDrawer, closeDrawer } from "../../Components/drawer.js";
 import { canManage } from "../../Utils/auth.js";
-import { updateProjet } from "../../Services/projetService.js";
+import { getProjets, updateProjet } from "../../Services/projetService.js";
 import { getStatutBadge, formatDate, getInitials } from "./projetsHelpers.js";
 import { allUtilisateurs } from "./projetsState.js";
 import { openProjetForm } from "./projetForm.js";
@@ -53,7 +54,7 @@ export async function renderProjetDetail(projetId) {
     const affectationsByTacheId = {};
     toutesLesTaches.forEach((t, i) => { affectationsByTacheId[t.id] = affectationsParTache[i]; });
 
-    const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
+    const chef = allUtilisateurs.find(u => u.id === projet.chefId);
     const client = allUtilisateurs.find(u => u.roleGlobal === "Client");
     const membres = allUtilisateurs.filter(u => u.roleGlobal === "Ouvrier");
 
@@ -62,6 +63,40 @@ export async function renderProjetDetail(projetId) {
     function reload() {
         return renderProjetDetail(projetId);
     }
+
+    async function ouvrirDrawerArchives() {
+    const tousLesProjets = await getProjets();
+    const projetsArchives = tousLesProjets.filter(p => p.statutProjet === "Suspendu");
+
+    openDrawer({
+        title: "Projets archivés",
+        icon: "fa-box-archive",
+        body: renderArchivesBody(projetsArchives),
+        onMount: panel => {
+            panel.querySelectorAll(".btn-voir-archive").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    closeDrawer();
+                    await renderProjetDetail(btn.dataset.projetId);
+                });
+            });
+
+            panel.querySelectorAll(".btn-restaurer-archive").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const id = btn.dataset.projetId;
+                    const p = projetsArchives.find(x => x.id === id);
+                    try {
+                        await updateProjet(id, { ...p, statutProjet: "En cours" });
+                        showToast("Projet restauré.");
+                        closeDrawer();
+                        if (id === projetId) await reload();
+                    } catch (err) {
+                        showToast(err.message, "error");
+                    }
+                });
+            });
+        },
+    });
+}
 
     function renderDetail() {
         app.innerHTML = `
@@ -123,10 +158,10 @@ export async function renderProjetDetail(projetId) {
             </button>
           </div>
           ${canManage() ? `
-            <button id="btnArchiver" class="mb-1 flex items-center gap-2 rounded-xl bg-inactif/10 px-3 py-1.5 text-xs font-bold text-inactif transition hover:bg-inactif/20">
-              <i class="fa-solid fa-box-archive text-xs"></i> Archiver
-            </button>
-          ` : ""}
+  <button id="btnVoirArchives" class="mb-1 flex items-center gap-2 rounded-xl bg-inactif/10 px-3 py-1.5 text-xs font-bold text-inactif transition hover:bg-inactif/20">
+    <i class="fa-solid fa-box-archive text-xs"></i> Archives
+  </button>
+` : ""}
         </div>
 
         <div id="tabContent">
@@ -154,7 +189,11 @@ export async function renderProjetDetail(projetId) {
             openProjetForm(projet, reload);
         });
 
-        document.getElementById("btnArchiver")?.addEventListener("click", () => {
+        document.getElementById("btnVoirArchives")?.addEventListener("click", () => {
+            ouvrirDrawerArchives();
+        });
+
+        document.getElementById("btnArchiverProjet")?.addEventListener("click", () => {
             openConfirm({
                 message: `Archiver le projet "${projet.nom}" ?`,
                 confirmLabel: "Archiver",
@@ -285,10 +324,9 @@ function renderOverviewTab(projet, chef, client, membres) {
             <div class="mt-4 flex gap-2">
               <button id="btnModifier" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
                 <i class="fa-solid fa-pen text-xs"></i> Modifier
-              </button>
-              <button class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
-                <i class="fa-solid fa-box-archive text-xs"></i> Archiver
-              </button>
+              <button id="btnArchiverProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
+                  <i class="fa-solid fa-box-archive text-xs"></i> Archiver
+                </button>
             </div>
           ` : ""}
         </div>
@@ -346,6 +384,39 @@ function renderMembreRow(membre, role) {
       <span class="rounded-full border border-bordure px-2.5 py-1 text-xs font-bold ${color}">${role}</span>
     </div>
   `;
+}
+
+function renderArchivesBody(projets) {
+    if (projets.length === 0) {
+        return `
+          <div class="rounded-2xl border border-dashed border-bordure bg-fond py-12 text-center">
+            <i class="fa-solid fa-box-archive text-3xl text-muted/30"></i>
+            <p class="mt-3 text-sm font-semibold text-muted">Aucun projet archivé.</p>
+          </div>
+        `;
+    }
+
+    return `
+      <div class="space-y-3">
+        ${projets.map(p => `
+          <div class="rounded-2xl border border-bordure bg-fond p-4">
+            <div class="mb-1 flex items-center justify-between gap-2">
+              <span class="truncate font-bold text-texte">${escapeHtml(p.nom)}</span>
+              <span class="flex-shrink-0 rounded-full bg-inactif/10 px-2 py-0.5 text-[10px] font-bold text-inactif">Archivé</span>
+            </div>
+            <p class="mb-3 truncate text-xs text-muted">${escapeHtml(p.adresse)}</p>
+            <div class="flex gap-2">
+              <button class="btn-voir-archive flex-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-secondary" data-projet-id="${escapeHtml(p.id)}">
+                Voir
+              </button>
+              <button class="btn-restaurer-archive flex-1 rounded-xl border border-bordure bg-carte px-3 py-1.5 text-xs font-bold text-muted transition hover:bg-succes/10 hover:text-succes" data-projet-id="${escapeHtml(p.id)}">
+                Restaurer
+              </button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
 }
 
 // ─── Onglet Phases (+ tâches) ─────────────────────────────────────────────────

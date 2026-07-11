@@ -3,6 +3,7 @@ import { showToast } from "../../Components/toast.js";
 import { openModal } from "../../Components/modal.js";
 import { createFormValidator, Rules } from "../../Utils/formValidator.js";
 import { createProjet, updateProjet } from "../../Services/projetService.js";
+import { getUtilisateurs } from "../../Services/utilisateurService.js";
 
 const PROJET_SCHEMA = {
     projetNom: { rules: [Rules.required("Le nom est obligatoire."), Rules.minLength(3, "Minimum 3 caractères.")], transform: v => v.trim(), as: "nom" },
@@ -10,10 +11,11 @@ const PROJET_SCHEMA = {
     projetDescription: { rules: [], transform: v => v.trim(), as: "description" },
     projetDebut: { rules: [Rules.required("La date de début est obligatoire.")], transform: v => v, as: "dateDeDebut" },
     projetFin: { rules: [Rules.required("La date de fin est obligatoire.")], transform: v => v, as: "dateDeFinPrevue" },
+    projetChef: { rules: [Rules.required("Le chef de chantier est obligatoire.")], transform: v => v, as: "chefId" },
     projetStatut: { rules: [], transform: v => v, as: "statutProjet" },
 };
 
-function projetFormBody(projet = null) {
+function projetFormBody(projet = null, chefs = []) {
     return `
     <div class="grid gap-4">
       <div>
@@ -61,6 +63,20 @@ function projetFormBody(projet = null) {
           />
         </div>
       </div>
+        <div>
+        <label for="projetChef" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+          Chef de chantier <span class="text-bloque">*</span>
+        </label>
+        <select id="projetChef"
+          class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="" disabled ${!projet?.chefId ? "selected" : ""}>Sélectionner un chef de chantier</option>
+          ${chefs.map(c => `
+            <option value="${escapeHtml(c.id)}" ${projet?.chefId === c.id ? "selected" : ""}>${escapeHtml(c.nom)}</option>
+          `).join("")}
+        </select>
+        ${chefs.length === 0 ? `<p class="mt-1 text-xs text-bloque">Aucun chef de chantier disponible.</p>` : ""}
+      </div>
       ${projet ? `
         <div>
           <label for="projetStatut" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
@@ -88,15 +104,18 @@ function projetFormBody(projet = null) {
  * @param {Function} [onSuccess] - callback appelé après succès. Si omis,
  *   recharge automatiquement la liste des projets.
  */
-export function openProjetForm(projet = null, onSuccess) {
+export async function openProjetForm(projet = null, onSuccess) {
     let validator;
+    const utilisateurs = await getUtilisateurs();
+    const chefs = utilisateurs.filter(u => u.roleGlobal === "Chef de chantier");
+
     openModal({
         title: projet ? "Modifier le projet" : "Nouveau projet",
         icon: "fa-building",
         confirmLabel: projet ? "Enregistrer" : "Créer",
         confirmIcon: "fa-floppy-disk",
         confirmClass: "bg-primary shadow-primary/20 hover:bg-secondary",
-        body: projetFormBody(projet),
+        body: projetFormBody(projet, chefs),
         onMount: modal => { validator = createFormValidator(modal, PROJET_SCHEMA); },
         onConfirm: async () => {
             const data = validator.validate();
