@@ -3,31 +3,35 @@ import { getProjets } from "../Services/projetService.js";
 import { getTaches } from "../Services/tacheService.js";
 import { getUtilisateurs } from "../Services/utilisateurService.js";
 import { escapeHtml } from "../Utils/html.js";
+import { getPhases } from "../Services/phaseService.js";
+import { calculerProgressionPhase, calculerProgressionProjet } from "../Utils/progressionHelpers.js";
 
 export async function renderDashboardPage() {
     console.log("Dashboard appelé");
     const app = document.getElementById("app");
     const session = getSession();
 
-    // Chargement des données
-    const [projets, taches, utilisateurs] = await Promise.all([
+    const [projets, taches, utilisateurs, phases] = await Promise.all([
         getProjets(),
         getTaches(),
         isAdmin() ? getUtilisateurs() : Promise.resolve([]),
+        getPhases(),
     ]);
+
+    const progressionParProjet = {};
+    projets.forEach(projet => {
+        const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
+        const phasesAvecProgression = phasesDuProjet.map(phase => ({
+            ...phase,
+            progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
+        }));
+        progressionParProjet[projet.id] = calculerProgressionProjet(phasesAvecProgression);
+    });
 
     // Calculs stats
     const projetsActifs = projets.filter(p => p.statutProjet === "En cours");
     const projetTermines = projets.filter(p => p.statutProjet === "Terminer");
-    const progressionMoy = projets.length
-        ? Math.round(projets.reduce((sum, p) => {
-            const tachesProjet = taches.filter(t => {
-                // on cherche les taches liées aux phases du projet via les données disponibles
-                return true;
-            });
-            return sum;
-        }, 0) / projets.length)
-        : 0;
+    
 
     const tachesEnAttente = taches.filter(t => t.statutTache === "A faire");
     const tachesEnCours = taches.filter(t => t.statutTache === "En cours");
@@ -94,8 +98,7 @@ export async function renderDashboardPage() {
             ${projets.length === 0
             ? `<p class="py-6 text-center text-sm text-muted">Aucun projet enregistré.</p>`
             : projets.slice(0, 5).map(projet => {
-                const tachesProjet = taches.filter(t => t.phaseId); // approximation
-                const progression = projet.progression ?? Math.floor(Math.random() * 80 + 10);
+                const progression = progressionParProjet[projet.id] ?? 0;
                 const statutColor = getStatutColor(projet.statutProjet);
 
                 return `

@@ -9,6 +9,7 @@ import { openProjetForm } from "./projetForm.js";
 import { openPhaseForm } from "./phaseForm.js";
 import { openTacheForm } from "./tacheForm.js";
 import { openTacheDetail } from "./tacheDetail.js";
+import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 
 export async function renderProjetDetail(projetId) {
     const app = document.getElementById("app");
@@ -36,6 +37,13 @@ export async function renderProjetDetail(projetId) {
 
     const tachesByPhaseId = {};
     phases.forEach((p, i) => { tachesByPhaseId[p.id] = tachesParPhase[i]; });
+
+    // Progression calculée dynamiquement, jamais stockée en base
+    const phasesAvecProgression = phases.map(p => ({
+        ...p,
+        progression: calculerProgressionPhase(tachesByPhaseId[p.id] ?? []),
+    }));
+    const progressionProjet = calculerProgressionProjet(phasesAvecProgression);
 
     const toutesLesTaches = tachesParPhase.flat();
     const affectationsParTache = await Promise.all(
@@ -68,17 +76,41 @@ export async function renderProjetDetail(projetId) {
             <p class="mt-1 text-sm text-muted">Contrôler et suivre la progression de vos chantiers en temps réel</p>
           </div>
           ${canManage() ? `
-            <div class="flex flex-shrink-0 gap-2">
-              <button id="btnRapport2" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-texte shadow-card transition hover:bg-fond">
-                <i class="fa-solid fa-file-lines text-xs"></i>
-                <span class="hidden sm:inline">Rapport</span>
-              </button>
-              <button id="btnNewProjet2" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
-                <i class="fa-solid fa-plus text-xs"></i>
-                <span>Nouveau projet</span>
-              </button>
-            </div>
-          ` : ""}
+  <div class="flex flex-shrink-0 flex-wrap gap-2">
+    ${projet.statutProjet === "Planifier" ? `
+      <button id="btnDemarrerProjet" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
+        <i class="fa-solid fa-play text-xs"></i>
+        <span>Démarrer le projet</span>
+      </button>
+    ` : ""}
+    ${projet.statutProjet === "En cours" ? `
+      <button
+        id="btnTerminerProjet"
+        class="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-soft transition
+          ${toutesLesPhasesTerminees(phases) ? "bg-succes hover:bg-succes/80" : "cursor-not-allowed bg-muted/30"}"
+        ${toutesLesPhasesTerminees(phases) ? "" : "disabled"}
+        title="${toutesLesPhasesTerminees(phases) ? "Terminer le projet" : "Disponible une fois toutes les phases terminées"}"
+      >
+        <i class="fa-solid fa-flag-checkered text-xs"></i>
+        <span>Terminer le projet</span>
+      </button>
+    ` : ""}
+    ${projet.statutProjet === "Terminer" ? `
+      <button id="btnReprendreProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-texte shadow-card transition hover:bg-fond">
+        <i class="fa-solid fa-rotate-left text-xs"></i>
+        <span>Reprendre le projet</span>
+      </button>
+    ` : ""}
+    <button id="btnRapport2" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-texte shadow-card transition hover:bg-fond">
+      <i class="fa-solid fa-file-lines text-xs"></i>
+      <span class="hidden sm:inline">Rapport</span>
+    </button>
+    <button id="btnNewProjet2" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
+      <i class="fa-solid fa-plus text-xs"></i>
+      <span>Nouveau projet</span>
+    </button>
+  </div>
+` : ""}
         </div>
 
         <div class="flex items-end justify-between border-b border-bordure">
@@ -98,9 +130,9 @@ export async function renderProjetDetail(projetId) {
         </div>
 
         <div id="tabContent">
-          ${activeTab === "overview"
-                ? renderOverviewTab(projet, chef, client, membres)
-                : renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheId)}
+            ${activeTab === "overview"
+                ? renderOverviewTab({ ...projet, progression: progressionProjet }, chef, client, membres)
+                : renderPhasesTab(phasesAvecProgression, projetId, tachesByPhaseId, affectationsByTacheId)}
         </div>
 
       </div>
@@ -137,6 +169,43 @@ export async function renderProjetDetail(projetId) {
                     }
                 }
             });
+        });
+
+        document.getElementById("btnDemarrerProjet")?.addEventListener("click", async () => {
+            try {
+                await updateProjet(projet.id, { ...projet, statutProjet: "En cours" });
+                showToast("Projet démarré.");
+                await reload();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        });
+
+        document.getElementById("btnTerminerProjet")?.addEventListener("click", async () => {
+            if (!toutesLesPhasesTerminees(phases)) return;
+            openConfirm({
+                message: `Marquer le projet "${projet.nom}" comme terminé ?`,
+                confirmLabel: "Terminer",
+                onConfirm: async () => {
+                    try {
+                        await updateProjet(projet.id, { ...projet, statutProjet: "Terminer" });
+                        showToast("Projet terminé.");
+                        await reload();
+                    } catch (err) {
+                        showToast(err.message, "error");
+                    }
+                },
+            });
+        });
+
+        document.getElementById("btnReprendreProjet")?.addEventListener("click", async () => {
+            try {
+                await updateProjet(projet.id, { ...projet, statutProjet: "En cours" });
+                showToast("Projet repris.");
+                await reload();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
         });
 
         // Nouvelle tâche (une phase à la fois)
@@ -179,6 +248,10 @@ export async function renderProjetDetail(projetId) {
     renderDetail();
 }
 
+function toutesLesPhasesTerminees(phases) {
+    return phases.length > 0 && phases.every(p => p.statutPhase === "Terminer");
+}
+
 // ─── Onglet Vue d'ensemble ────────────────────────────────────────────────────
 function renderOverviewTab(projet, chef, client, membres) {
     const progression = projet.progression ?? 0;
@@ -192,12 +265,12 @@ function renderOverviewTab(projet, chef, client, membres) {
           <h2 class="mb-4 text-base font-black text-texte">Projet information</h2>
           <div class="space-y-3">
             ${[
-                { label: "Client", value: client?.nom ?? "—" },
-                { label: "Chef de chantier", value: chef?.nom ?? "—" },
-                { label: "Date de début", value: formatDate(projet.dateDeDebut) },
-                { label: "Date de fin", value: formatDate(projet.dateDeFinPrevue) },
-                { label: "Adresse", value: projet.adresse },
-            ].map(row => `
+            { label: "Client", value: client?.nom ?? "—" },
+            { label: "Chef de chantier", value: chef?.nom ?? "—" },
+            { label: "Date de début", value: formatDate(projet.dateDeDebut) },
+            { label: "Date de fin", value: formatDate(projet.dateDeFinPrevue) },
+            { label: "Adresse", value: projet.adresse },
+        ].map(row => `
               <div class="flex items-center justify-between border-b border-bordure pb-2 last:border-0 last:pb-0">
                 <span class="text-sm font-bold text-texte">${row.label}</span>
                 <span class="text-sm text-muted">${escapeHtml(row.value ?? "—")}</span>
@@ -246,8 +319,8 @@ function renderOverviewTab(projet, chef, client, membres) {
             ${membres.map(m => renderMembreRow(m, "Ouvrier")).join("")}
             ${client ? renderMembreRow(client, "Client") : ""}
             ${!chef && membres.length === 0 && !client
-                ? `<p class="text-sm text-muted">Aucun membre assigné.</p>`
-                : ""}
+            ? `<p class="text-sm text-muted">Aucun membre assigné.</p>`
+            : ""}
           </div>
         </div>
       </div>
