@@ -1,4 +1,5 @@
 export async function apiRequest(url, options = {} , errorMessage = "Une erreur est survenue") {
+    console.log("APPEL API →", url); // TEST
     const response = await fetch(url, {
         headers: {
             "Content-Type": "application/json",
