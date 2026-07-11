@@ -14,12 +14,20 @@ const BRICK_BASE = [
 const BRICK_HIDDEN = ["opacity-0", "-translate-y-10"];
 const BRICK_SHOWN = ["opacity-100", "translate-y-0"];
 
+export function getBrickCycleDuration(rows, cols, delay = 55) {
+    const constructionTime = rows * cols * delay;
+    const pauseBeforeReset = 700;
+    const delayBeforeRebuild = 300;
+    return constructionTime + pauseBeforeReset + delayBeforeRebuild;
+}
+
 export function brickLoaderHTML(rows = 3, cols = 6) {
     let rowsHTML = "";
+    // r = rows-1 (rangée du haut) → r = 0 (rangée du bas), ordre d'AFFICHAGE (correct, ne pas toucher)
     for (let r = rows - 1; r >= 0; r--) {
         const offsetClass = r % 2 === 0 ? "ml-[19px]" : "";
         rowsHTML += `<div class="flex gap-[3px] ${offsetClass}">` +
-            Array.from({ length: cols }, () => `<div class="${BRICK_BASE}"></div>`).join("") +
+            Array.from({ length: cols }, () => `<div class="${BRICK_BASE}" data-row="${r}"></div>`).join("") +
             `</div>`;
     }
     return `
@@ -29,31 +37,58 @@ export function brickLoaderHTML(rows = 3, cols = 6) {
     </div>`;
 }
 
-export function runBrickLoader({ container, delay = 55, loop = true, onComplete } = {}) {
-    const bricks = [...container.querySelectorAll(".brick")];
-    let i = 0;
-    let stopped = false;
+export function runBrickLoader({
+    container,
+    delay = 55,
+} = {}) {
 
-    function step() {
-        if (stopped) return;
-        if (i >= bricks.length) {
-            if (!loop) { if (onComplete) onComplete(); return; }
-            setTimeout(() => {
-                bricks.forEach((b) => {
-                    b.classList.remove(...BRICK_SHOWN);
-                    b.classList.add(...BRICK_HIDDEN);
-                });
-                i = 0;
-                setTimeout(step, 300);
-            }, 700);
-            return;
+    const bricks = [...container.querySelectorAll(".brick")]
+        .sort((a, b) => Number(a.dataset.row) - Number(b.dataset.row))
+        .reverse();
+
+    let stopRequested = false;
+    let resolveStop;
+
+    const stopPromise = new Promise(resolve => {
+        resolveStop = resolve;
+    });
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    (async () => {
+
+        while (!stopRequested) {
+
+            // Construction du mur
+            for (const brick of bricks) {
+
+                brick.classList.remove(...BRICK_HIDDEN);
+                brick.classList.add(...BRICK_SHOWN);
+
+                await sleep(delay);
+            }
+
+            // Pause
+            await sleep(700);
+
+            if (stopRequested) break;
+
+            // On cache toutes les briques
+            bricks.forEach(brick => {
+                brick.classList.remove(...BRICK_SHOWN);
+                brick.classList.add(...BRICK_HIDDEN);
+            });
+
+            await sleep(300);
         }
-        bricks[i].classList.remove(...BRICK_HIDDEN);
-        bricks[i].classList.add(...BRICK_SHOWN);
-        i++;
-        setTimeout(step, delay);
-    }
-    step();
 
-    return () => { stopped = true; };
+        resolveStop();
+
+    })();
+    
+
+    return () => {
+        stopRequested = true;
+        return stopPromise;
+    };
 }

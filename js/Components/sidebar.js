@@ -1,19 +1,18 @@
 import { getSession, isAdmin, isChef, isOuvrier, isClient, canManage } from "../Utils/auth.js";
 import { escapeHtml } from "../Utils/html.js";
-import { navigate } from "../router.js";
 
 export function renderSidebar() {
   const session = getSession();
   const role    = session?.roleGlobal;
 
   const NAV_LINKS = [
-    { page: "dashboard",    label: "Dashboard",      icon: "fa-gauge",                always: true },
-    { page: "projets",      label: "Projets",         icon: "fa-building",             always: true },
-    { page: "utilisateurs", label: "Utilisateurs",    icon: "fa-users",                admin: true },
-    { page: "materiaux",    label: "Matériaux",       icon: "fa-cubes",                manage: true },
-    { page: "rapports",     label: "Rapports",        icon: "fa-file-lines",           always: true },
-    { page: "signalements", label: "Signalements",    icon: "fa-triangle-exclamation", manage: true },
-    { page: "taches",       label: "Mes tâches",      icon: "fa-list-check",           ouvrier: true },
+    { page: "dashboard",    label: "Dashboard",     icon: "fa-gauge",                always: true },
+    { page: "projets",      label: "Projets",        icon: "fa-building",             always: true },
+    { page: "utilisateurs", label: "Utilisateurs",   icon: "fa-users",                admin: true },
+    { page: "materiaux",    label: "Matériaux",      icon: "fa-cubes",                manage: true },
+    { page: "rapports",     label: "Rapports",       icon: "fa-file-lines",           always: true },
+    { page: "signalements", label: "Signalements",   icon: "fa-triangle-exclamation", manage: true },
+    { page: "taches",       label: "Mes tâches",     icon: "fa-list-check",           ouvrier: true },
   ];
 
   const filteredLinks = NAV_LINKS.filter(link => {
@@ -41,21 +40,21 @@ export function renderSidebar() {
       <span class="nav-icon flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-fond text-muted transition group-hover:bg-primary/10 group-hover:text-primary">
         <i class="fa-solid ${link.icon} text-xs"></i>
       </span>
-      <span class="nav-label">${link.label}</span>
+      <span class="nav-label truncate">${link.label}</span>
     </button>
   `).join("");
 
   return `
     <aside
       id="sidebar"
-      class="fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-bordure bg-carte shadow-soft transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 lg:shadow-none -translate-x-full"
+      class="fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-bordure bg-carte transition-all duration-300 ease-in-out -translate-x-full lg:relative lg:translate-x-0 lg:h-auto lg:min-h-screen"
     >
-      <!-- Header sidebar -->
-      <div class="flex flex-shrink-0 items-center gap-3 border-b border-bordure px-4 py-4">
+      <!-- Header -->
+      <div class="flex flex-shrink-0 items-center gap-2 border-b border-bordure px-4 py-4">
         <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary">
           <i class="fa-solid fa-helmet-safety text-accent text-sm"></i>
         </div>
-        <div class="sidebar-text min-w-0 flex-1">
+        <div class="sidebar-text flex-1 min-w-0">
           <h1 class="truncate text-sm font-extrabold tracking-tight text-primary">Suivi Chantier</h1>
           <p class="text-[11px] text-muted">Gestion de chantier</p>
         </div>
@@ -69,7 +68,7 @@ export function renderSidebar() {
         </button>
       </div>
 
-      <!-- Navigation -->
+      <!-- Nav -->
       <nav class="flex-1 overflow-y-auto px-3 py-4">
         <p class="sidebar-text mb-2 px-3 text-[10px] font-black uppercase tracking-widest text-muted/60">Menu</p>
         <div class="grid gap-1">
@@ -77,7 +76,7 @@ export function renderSidebar() {
         </div>
       </nav>
 
-      <!-- Profil + Déconnexion -->
+      <!-- Profil + logout -->
       <div class="flex-shrink-0 border-t border-bordure p-3">
         <div class="sidebar-text mb-2 flex items-center gap-3 rounded-xl bg-fond px-3 py-2.5">
           <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -103,49 +102,72 @@ export function renderSidebar() {
 }
 
 export function initSidebar() {
-  const sidebar     = document.getElementById("sidebar");
-  const overlay     = document.getElementById("sidebarOverlay");
-  const toggleBtn   = document.getElementById("sidebarToggle");
-  const closeBtn    = document.getElementById("sidebarClose");
-  const collapseBtn = document.getElementById("sidebarCollapseBtn");
+  const sidebar      = document.getElementById("sidebar");
+  const overlay      = document.getElementById("sidebarOverlay");
+  const toggleBtn    = document.getElementById("sidebarToggle");
+  const closeBtn     = document.getElementById("sidebarClose");
+  const collapseBtn  = document.getElementById("sidebarCollapseBtn");
   const collapseIcon = document.getElementById("collapseIcon");
+  const navbar       = document.getElementById("navbar");
 
   let collapsed = false;
 
-  // Ouvrir sidebar mobile
   const openSidebar = () => {
     sidebar.classList.remove("-translate-x-full");
     overlay.classList.remove("hidden");
   };
 
-  // Fermer sidebar mobile
   const closeSidebar = () => {
     sidebar.classList.add("-translate-x-full");
     overlay.classList.add("hidden");
   };
 
-  // Collapse sidebar desktop
   const collapseSidebar = () => {
     collapsed = !collapsed;
 
     if (collapsed) {
+      // Réduire sidebar
       sidebar.classList.remove("w-64");
       sidebar.classList.add("w-16");
+
+      // Navbar suit
+      navbar.classList.remove("lg:left-64");
+      navbar.classList.add("lg:left-16");
+
+      // Icône collapse
       collapseIcon.className = "fa-solid fa-angles-right text-xs";
+
       // Cacher textes
       sidebar.querySelectorAll(".sidebar-text, .nav-label").forEach(el => el.classList.add("hidden"));
-      // Centrer icônes
-      sidebar.querySelectorAll(".nav-link").forEach(el => el.classList.add("justify-center"));
-      sidebar.querySelectorAll(".nav-icon").forEach(el => el.classList.remove("bg-fond"));
+
+      // Centrer icônes nav
+      sidebar.querySelectorAll(".nav-link").forEach(el => {
+        el.classList.add("justify-center");
+        el.classList.remove("px-3");
+        el.classList.add("px-0");
+      });
+
     } else {
+      // Étendre sidebar
       sidebar.classList.add("w-64");
       sidebar.classList.remove("w-16");
+
+      // Navbar suit
+      navbar.classList.add("lg:left-64");
+      navbar.classList.remove("lg:left-16");
+
+      // Icône collapse
       collapseIcon.className = "fa-solid fa-angles-left text-xs";
+
       // Afficher textes
       sidebar.querySelectorAll(".sidebar-text, .nav-label").forEach(el => el.classList.remove("hidden"));
-      // Remettre icônes
-      sidebar.querySelectorAll(".nav-link").forEach(el => el.classList.remove("justify-center"));
-      sidebar.querySelectorAll(".nav-icon").forEach(el => el.classList.add("bg-fond"));
+
+      // Remettre icônes nav
+      sidebar.querySelectorAll(".nav-link").forEach(el => {
+        el.classList.remove("justify-center");
+        el.classList.add("px-3");
+        el.classList.remove("px-0");
+      });
     }
   };
 
@@ -153,20 +175,6 @@ export function initSidebar() {
   closeBtn?.addEventListener("click", closeSidebar);
   overlay?.addEventListener("click", closeSidebar);
   collapseBtn?.addEventListener("click", collapseSidebar);
-
-  // Sur desktop, sidebar toujours visible
-  if (window.innerWidth >= 1024) {
-    sidebar.classList.remove("-translate-x-full");
-  }
-
-  // Navigation au clic sur les liens du menu
-  sidebar.querySelectorAll("[data-page]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      navigate(btn.dataset.page);
-      // Sur mobile, on referme la sidebar après le clic
-      if (window.innerWidth < 1024) closeSidebar();
-    });
-  });
 
   return { close: closeSidebar };
 }

@@ -7,7 +7,12 @@ import { renderMateriauxPage } from "./Pages/materiauxPage.js";
 import { renderRapportsPage } from "./Pages/rapportsPage.js";
 import { renderSignalementsPage } from "./Pages/signalementsPage.js";
 import { renderTachesPage } from "./Pages/tachesPage.js";
-import { brickLoaderHTML, runBrickLoader } from "./Components/brickLoader.js";
+import {
+    brickLoaderHTML,
+    runBrickLoader,
+    getBrickCycleDuration
+} from "./Components/brickLoader.js";
+
 
 
 const routes = {
@@ -39,6 +44,8 @@ function canAccess(page) {
 }
 
 export async function navigate(page = "dashboard") {
+    console.log("1 - navigate() appelé avec :", page); // TEST
+
     if (!requireAuth()) return;
 
     if (!canAccess(page)) {
@@ -48,6 +55,8 @@ export async function navigate(page = "dashboard") {
 
     const app = document.getElementById("app");
     const route = routes[page] ?? routes.dashboard;
+    console.log("2 - route sélectionnée, sur le point d'appeler route()"); // TEST
+
 
     // Mettre à jour les liens actifs dans la sidebar
     document.querySelectorAll("[data-page]").forEach((button) => {
@@ -80,34 +89,50 @@ export async function navigate(page = "dashboard") {
       ${brickLoaderHTML(3, 6)}
     </div>`;
 
-    const MIN_LOADER_TIME = 900; // ms
-    const startTime = performance.now();
-    const stopLoader = runBrickLoader({ container: app, delay: 55 });
+    const stopLoader = runBrickLoader({
+        container: app,
+        delay: 55,
+    });
 
     try {
-        await route();
-        const elapsed = performance.now() - startTime;
-        if (elapsed < MIN_LOADER_TIME) {
-            await new Promise((r) => setTimeout(r, MIN_LOADER_TIME - elapsed));
-        }
+        console.log("3 - juste avant Promise.all"); // TEST
+
+        const cycleDuration = getBrickCycleDuration(3, 6, 55);
+        await Promise.all([
+            route(),
+            new Promise((resolve) => setTimeout(resolve, cycleDuration)),
+        ]);
+        console.log("4 - Promise.all terminé avec succès"); // TEST
+
         stopLoader();
-    } catch (error) {
+    }
+    catch (error) {
+        console.log("5 - ERREUR attrapée :", error); // TEST
+
         stopLoader();
+
         app.innerHTML = `
       <div class="rounded-2xl border border-bloque/20 bg-carte p-6 shadow-card sm:p-8">
         <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bloque/10 text-bloque">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
-        <h1 class="text-xl font-black text-texte">Erreur de chargement</h1>
-        <p class="mt-2 text-sm leading-6 text-muted">${error.message}</p>
+
+        <h1 class="text-xl font-black text-texte">
+          Erreur de chargement
+        </h1>
+
+        <p class="mt-2 text-sm leading-6 text-muted">
+          ${error.message}
+        </p>
+
         <button
-          onclick="window.dispatchEvent(new CustomEvent('app:login'))"
-          class="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary"
-        >
-          Réessayer
+            onclick="window.dispatchEvent(new CustomEvent('app:login'))"
+            class="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
+            Réessayer
         </button>
       </div>
     `;
+
         showToast(error.message, "error");
     }
 }
