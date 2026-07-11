@@ -13,6 +13,7 @@ function normalizeProjet(data) {
         dateDeDebut: data.dateDeDebut,
         dateDeFinPrevue: data.dateDeFinPrevue,
         statutProjet: data.statutProjet ?? "Planifier",
+        chefId: data.chefId ?? null,
     };
 }
 
@@ -29,8 +30,9 @@ export async function getProjet(id) {
 }
 
 export async function createProjet(data) {
-    required(data.nom, "Le nom du projet est obligatoire.");
-    required(data.dateDeDebut, "La date de début est obligatoire.");
+required(data.nom, "Le nom du projet est obligatoire.");
+required(data.dateDeDebut, "La date de début est obligatoire.");
+required(data.chefId, "Le chef de chantier est obligatoire.");
 
     const projet = normalizeProjet({
         id: createId("projet"),
@@ -45,7 +47,8 @@ export async function createProjet(data) {
 }
 
 export async function updateProjet(id, data) {
-    required(data.nom, "Le nom du projet est obligatoire.");
+required(data.nom, "Le nom du projet est obligatoire.");
+required(data.chefId, "Le chef de chantier est obligatoire.");
 
     const result = await apiRequest(
         `${ENDPOINTS.projets}/${id}`,
