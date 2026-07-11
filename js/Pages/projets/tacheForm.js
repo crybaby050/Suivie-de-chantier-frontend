@@ -3,7 +3,7 @@ import { showToast } from "../../Components/toast.js";
 import { openModal } from "../../Components/modal.js";
 import { createFormValidator, Rules } from "../../Utils/formValidator.js";
 import { createTache, updateTache } from "../../Services/tacheService.js";
-import { createAffectationTache, deleteAffectationTache } from "../../Services/affectationTacheService.js";
+import { affecterUtilisateur, supprimerAffectation } from "../../Services/affectationService.js";
 import { allUtilisateurs } from "./projetsState.js";
 
 const TACHE_SCHEMA = {
@@ -14,14 +14,6 @@ const TACHE_SCHEMA = {
     tacheStatut: { rules: [], transform: v => v, as: "statutTache" },
 };
 
-/**
- * Ouvre le formulaire de création/modification d'une tâche, avec
- * assignation des ouvriers directement dans le même formulaire.
- * @param {string} phaseId
- * @param {Function} onSuccess - callback après succès (recharge le détail projet)
- * @param {object|null} [tache]
- * @param {Array} [currentAffectations] - affectations existantes de la tâche (si modification)
- */
 export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectations = []) {
     const ouvriers = allUtilisateurs.filter(u => u.roleGlobal === "Ouvrier");
     const assignedIds = new Set(currentAffectations.map(a => a.utilisateurId));
@@ -116,8 +108,8 @@ export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectati
                 const toRemove = currentAffectations.filter(a => !checkedIds.includes(a.utilisateurId));
 
                 await Promise.all([
-                    ...toAdd.map(utilisateurId => createAffectationTache({ tacheId: savedTache.id, utilisateurId })),
-                    ...toRemove.map(a => deleteAffectationTache(a.id)),
+                    ...toAdd.map(utilisateurId => affecterUtilisateur({ tacheId: savedTache.id, utilisateurId })),
+                    ...toRemove.map(a => supprimerAffectation(a.id, a.utilisateurId)),
                 ]);
 
                 await onSuccess();

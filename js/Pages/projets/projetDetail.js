@@ -3,10 +3,12 @@ import { showToast } from "../../Components/toast.js";
 import { openConfirm } from "../../Components/modal.js";
 import { canManage } from "../../Utils/auth.js";
 import { updateProjet } from "../../Services/projetService.js";
-import { getStatutBadge, formatDate } from "./projetsHelpers.js";
+import { getStatutBadge, formatDate, getInitials } from "./projetsHelpers.js";
 import { allUtilisateurs } from "./projetsState.js";
 import { openProjetForm } from "./projetForm.js";
 import { openPhaseForm } from "./phaseForm.js";
+import { openTacheForm } from "./tacheForm.js";
+import { openTacheDetail } from "./tacheDetail.js";
 
 export async function renderProjetDetail(projetId) {
     const app = document.getElementById("app");
@@ -22,11 +24,26 @@ export async function renderProjetDetail(projetId) {
 
     const { getPhasesByProjet } = await import("../../Services/phaseService.js");
     const { getProjet } = await import("../../Services/projetService.js");
+    const { getTachesByPhase } = await import("../../Services/tacheService.js");
+    const { getAffectationsByTache } = await import("../../Services/affectationService.js");
 
     const [projet, phases] = await Promise.all([
         getProjet(projetId),
         getPhasesByProjet(projetId),
     ]);
+
+    const tachesParPhase = await Promise.all(phases.map(p => getTachesByPhase(p.id)));
+
+    const tachesByPhaseId = {};
+    phases.forEach((p, i) => { tachesByPhaseId[p.id] = tachesParPhase[i]; });
+
+    const toutesLesTaches = tachesParPhase.flat();
+    const affectationsParTache = await Promise.all(
+        toutesLesTaches.map(t => getAffectationsByTache(t.id))
+    );
+
+    const affectationsByTacheId = {};
+    toutesLesTaches.forEach((t, i) => { affectationsByTacheId[t.id] = affectationsParTache[i]; });
 
     const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
     const client = allUtilisateurs.find(u => u.roleGlobal === "Client");
@@ -34,11 +51,14 @@ export async function renderProjetDetail(projetId) {
 
     let activeTab = "overview";
 
+    function reload() {
+        return renderProjetDetail(projetId);
+    }
+
     function renderDetail() {
         app.innerHTML = `
       <div class="space-y-5">
 
-        <!-- En-tête -->
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <button id="btnRetour" class="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-primary">
@@ -61,7 +81,6 @@ export async function renderProjetDetail(projetId) {
           ` : ""}
         </div>
 
-        <!-- Onglets -->
         <div class="flex items-end justify-between border-b border-bordure">
           <div class="flex gap-1">
             <button class="tab-btn px-4 py-2.5 text-sm font-bold transition border-b-2 ${activeTab === "overview" ? "border-primary text-primary" : "border-transparent text-muted hover:text-primary"}" data-tab="overview">
@@ -78,15 +97,15 @@ export async function renderProjetDetail(projetId) {
           ` : ""}
         </div>
 
-        <!-- Contenu onglet -->
         <div id="tabContent">
-          ${activeTab === "overview" ? renderOverviewTab(projet, chef, client, membres) : renderPhasesTab(phases, projetId)}
+          ${activeTab === "overview"
+                ? renderOverviewTab(projet, chef, client, membres)
+                : renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheId)}
         </div>
 
       </div>
     `;
 
-        // Onglets
         document.querySelectorAll(".tab-btn").forEach(btn => {
             btn.addEventListener("click", () => {
                 activeTab = btn.dataset.tab;
@@ -94,18 +113,15 @@ export async function renderProjetDetail(projetId) {
             });
         });
 
-        // Retour
         document.getElementById("btnRetour")?.addEventListener("click", async () => {
             const { renderProjetsPage } = await import("./projetsPage.js");
             await renderProjetsPage();
         });
 
-        // Modifier
         document.getElementById("btnModifier")?.addEventListener("click", () => {
-            openProjetForm(projet, () => renderProjetDetail(projetId));
+            openProjetForm(projet, reload);
         });
 
-        // Archiver
         document.getElementById("btnArchiver")?.addEventListener("click", () => {
             openConfirm({
                 message: `Archiver le projet "${projet.nom}" ?`,
@@ -123,9 +139,28 @@ export async function renderProjetDetail(projetId) {
             });
         });
 
+        // Nouvelle tâche (une phase à la fois)
+        document.querySelectorAll(".btn-add-tache").forEach(btn => {
+            btn.addEventListener("click", () => {
+                openTacheForm(btn.dataset.phaseId, reload);
+            });
+        });
+
+        // Clic sur une ligne de tâche → détail
+        document.querySelectorAll(".tache-row").forEach(row => {
+            row.addEventListener("click", () => {
+                const tacheId = row.dataset.tacheId;
+                const phaseId = row.dataset.phaseId;
+                const taches = tachesByPhaseId[phaseId] ?? [];
+                const tache = taches.find(t => t.id === tacheId);
+                const affectations = affectationsByTacheId[tacheId] ?? [];
+                openTacheDetail(tache, affectations, phaseId, reload);
+            });
+        });
+
         // Nouvelle phase
         document.getElementById("btnNouvellePhase")?.addEventListener("click", () => {
-            openPhaseForm(projetId, () => renderProjetDetail(projetId));
+            openPhaseForm(projetId, reload);
         });
 
         // Filtres phases
@@ -240,12 +275,13 @@ function renderMembreRow(membre, role) {
   `;
 }
 
-// ─── Onglet Phases ────────────────────────────────────────────────────────────
-function renderPhasesTab(phases, projetId) {
+// ─── Onglet Phases (+ tâches) ─────────────────────────────────────────────────
+function renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheId) {
     const FILTERS = ["Tout", "En cours", "Terminer", "Ordre"];
 
     return `
     <div class="space-y-4">
+
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex flex-wrap gap-2">
           ${FILTERS.map((f, i) => `
@@ -269,49 +305,105 @@ function renderPhasesTab(phases, projetId) {
               <p class="mt-3 text-sm font-semibold text-muted">Aucune phase créée.</p>
             </div>
           `
-            : phases.map(phase => renderPhaseCard(phase)).join("")
+            : phases.map(phase => renderPhaseCard(
+                phase,
+                tachesByPhaseId[phase.id] ?? [],
+                affectationsByTacheId
+            )).join("")
         }
       </div>
     </div>
   `;
 }
 
-function renderPhaseCard(phase) {
+function renderPhaseCard(phase, taches, affectationsByTacheId) {
     const progression = phase.progression ?? 0;
 
     return `
-    <div class="flex gap-4 rounded-2xl border border-bordure bg-carte p-5 shadow-card">
-      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary">
-        ${phase.ordre}
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 class="font-black text-texte">Phase ${phase.ordre} : ${escapeHtml(phase.libelle)}</h3>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-texte">${progression}/100</span>
-            <span class="text-xs text-muted">Tâches</span>
+    <div class="rounded-2xl border border-bordure bg-carte p-5 shadow-card">
+      <div class="flex gap-4">
+        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary">
+          ${phase.ordre}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="font-black text-texte">Phase ${phase.ordre} : ${escapeHtml(phase.libelle)}</h3>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-texte">${taches.length}</span>
+              <span class="text-xs text-muted">Tâches</span>
+            </div>
+          </div>
+          <p class="mb-3 text-xs text-muted">
+            <span class="font-semibold">Début :</span> ${formatDate(phase.dateDeDebut)}
+            &nbsp;&nbsp;
+            <span class="font-semibold">Fin :</span> ${formatDate(phase.dateDeFinPrevue)}
+          </p>
+          <p class="mb-2 text-xs font-bold text-texte">Progression</p>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-fond">
+            <div class="h-2 rounded-full bg-primary transition-all" style="width:${progression}%"></div>
           </div>
         </div>
-        <p class="mb-3 text-xs text-muted">
-          <span class="font-semibold">Début :</span> ${formatDate(phase.dateDeDebut)}
-          &nbsp;&nbsp;
-          <span class="font-semibold">Fin :</span> ${formatDate(phase.dateDeFinPrevue)}
-        </p>
-        <p class="mb-2 text-xs font-bold text-texte">Progression</p>
-        <div class="h-2 w-full overflow-hidden rounded-full bg-fond">
-          <div class="h-2 rounded-full bg-primary transition-all" style="width:${progression}%"></div>
+
+        ${canManage() ? `
+          <div class="flex flex-shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+            <button class="btn-edit-phase flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-secondary" data-phase-id="${escapeHtml(phase.id)}">
+              <i class="fa-solid fa-pen text-xs"></i> Modifier
+            </button>
+            <button class="btn-delete-phase flex items-center gap-1.5 rounded-xl border border-bordure bg-carte px-3 py-1.5 text-xs font-bold text-muted transition hover:bg-bloque/10 hover:text-bloque" data-phase-id="${escapeHtml(phase.id)}">
+              <i class="fa-solid fa-box-archive text-xs"></i> Archive
+            </button>
+          </div>
+        ` : ""}
+      </div>
+
+      <!-- Tâches de la phase -->
+      <div class="mt-4 border-t border-bordure pt-4">
+        <div class="mb-2 flex items-center justify-between">
+          <p class="text-xs font-black uppercase tracking-wider text-muted">Tâches</p>
+          ${canManage() ? `
+            <button class="btn-add-tache flex items-center gap-1 text-xs font-bold text-primary transition hover:text-secondary" data-phase-id="${escapeHtml(phase.id)}">
+              <i class="fa-solid fa-plus text-[10px]"></i> Ajouter
+            </button>
+          ` : ""}
+        </div>
+        ${taches.length === 0
+            ? `<p class="text-xs italic text-muted">Aucune tâche pour cette phase.</p>`
+            : `
+            <div class="space-y-2">
+              ${taches.map(t => renderTacheRow(t, affectationsByTacheId[t.id] ?? [], phase.id)).join("")}
+            </div>
+          `}
+      </div>
+    </div>
+  `;
+}
+
+function renderTacheRow(tache, affectations, phaseId) {
+    const statut = getStatutBadge(tache.statutTache);
+    const progression = tache.progression ?? 0;
+    const assignes = affectations
+        .map(a => allUtilisateurs.find(u => u.id === a.utilisateurId))
+        .filter(Boolean);
+
+    return `
+    <div class="tache-row flex cursor-pointer items-center gap-3 rounded-xl bg-fond p-3 transition hover:bg-fond/70" data-tache-id="${escapeHtml(tache.id)}" data-phase-id="${escapeHtml(phaseId)}">
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-semibold text-texte">${escapeHtml(tache.titre)}</p>
+        <div class="mt-1 h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-bordure/40">
+          <div class="h-1.5 rounded-full bg-primary" style="width:${progression}%"></div>
         </div>
       </div>
-      ${canManage() ? `
-        <div class="flex flex-shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
-          <button class="btn-edit-phase flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-secondary" data-phase-id="${escapeHtml(phase.id)}">
-            <i class="fa-solid fa-pen text-xs"></i> Modifier
-          </button>
-          <button class="btn-delete-phase flex items-center gap-1.5 rounded-xl border border-bordure bg-carte px-3 py-1.5 text-xs font-bold text-muted transition hover:bg-bloque/10 hover:text-bloque" data-phase-id="${escapeHtml(phase.id)}">
-            <i class="fa-solid fa-box-archive text-xs"></i> Archive
-          </button>
-        </div>
-      ` : ""}
+      <div class="flex flex-shrink-0 -space-x-2">
+        ${assignes.slice(0, 3).map(u => `
+          <div class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-fond bg-primary/10 text-[10px] font-black text-primary" title="${escapeHtml(u.nom)}">
+            ${getInitials(u.nom)}
+          </div>
+        `).join("")}
+        ${assignes.length > 3 ? `<div class="flex h-7 w-7 items-center justify-center rounded-full border-2 border-fond bg-muted/10 text-[10px] font-black text-muted">+${assignes.length - 3}</div>` : ""}
+        ${assignes.length === 0 ? `<span class="text-xs italic text-muted">Non assignée</span>` : ""}
+      </div>
+      <div class="flex-shrink-0">${statut}</div>
     </div>
   `;
 }
