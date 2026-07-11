@@ -157,7 +157,7 @@ function renderListeView(projets) {
           </thead>
           <tbody>
             ${projets.map(projet => {
-        const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
+        const chef = allUtilisateurs.find(u => u.id === projet.chefId);
         const statut = getStatutBadge(projet.statutProjet);
         const progression = progressionParProjet[projet.id] ?? 0;
 
@@ -219,7 +219,7 @@ function renderCardsView(projets) {
     return `
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       ${projets.map(projet => {
-        const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
+        const chef = allUtilisateurs.find(u => u.id === projet.chefId);
         const statut = getStatutBadge(projet.statutProjet);
         const progression = progressionParProjet[projet.id] ?? 0;
 

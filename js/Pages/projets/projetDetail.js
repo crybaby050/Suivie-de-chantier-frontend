@@ -54,7 +54,7 @@ export async function renderProjetDetail(projetId) {
     const affectationsByTacheId = {};
     toutesLesTaches.forEach((t, i) => { affectationsByTacheId[t.id] = affectationsParTache[i]; });
 
-    const chef = allUtilisateurs.find(u => u.roleGlobal === "Chef de chantier");
+    const chef = allUtilisateurs.find(u => u.id === projet.chefId);
     const client = allUtilisateurs.find(u => u.roleGlobal === "Client");
     const membres = allUtilisateurs.filter(u => u.roleGlobal === "Ouvrier");
 
