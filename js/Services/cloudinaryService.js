@@ -1,4 +1,4 @@
-import { CLOUDINARY_UPLOAD_URL, CLOUDINARY_CONFIG } from "../Config/cloudinary.config.js";
+import { CLOUDINARY_UPLOAD_URL, CLOUDINARY_CONFIG } from "../Config/cloudinary.js";
 
 /**
  * Upload un fichier image vers Cloudinary (upload non signé).
