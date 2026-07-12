@@ -247,42 +247,26 @@ function renderTacheCard(tache) {
             <i class="fa-solid fa-camera text-primary/60"></i> Photos (${photos.length})
           </span>
           ${peutAjouterPhoto ? `
-  <button
-    class="btn-toggle-photo text-xs font-bold text-primary hover:underline"
-    data-tache-id="${escapeHtml(tache.id)}"
-  >
-    ${openPhotoForm === tache.id ? "Annuler" : "+ Ajouter"}
-  </button>
-` : ""}
+            <button
+              class="btn-toggle-photo text-xs font-bold text-primary hover:underline"
+              data-tache-id="${escapeHtml(tache.id)}"
+            >
+              ${openPhotoForm === tache.id ? "Fermer" : "+ Ajouter"}
+            </button>
+          ` : ""}
         </div>
 
         ${photos.length > 0 ? `
-  <div class="mb-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-    ${photos.map(p => `
-      <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="block aspect-square overflow-hidden rounded-lg">
-        <img src="${escapeHtml(p.url)}" alt="Photo tâche" class="h-full w-full object-cover" />
-      </a>
-    `).join("")}
-  </div>
-` : ""}
+          <div class="mb-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+            ${photos.map(p => `
+              <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="block aspect-square overflow-hidden rounded-lg">
+                <img src="${escapeHtml(p.url)}" alt="Photo tâche" class="h-full w-full object-cover" />
+              </a>
+            `).join("")}
+          </div>
+        ` : ""}
 
-        ${openPhotoForm === tache.id ? `
-  <div class="flex flex-col gap-2 rounded-xl bg-fond p-3">
-    <input
-      type="file"
-      accept="image/*"
-      class="photo-file-input flex-1 rounded-xl border border-bordure bg-carte px-3 py-2 text-xs outline-none focus:border-primary"
-      data-tache-id="${escapeHtml(tache.id)}"
-    />
-    <button
-      class="btn-save-photo self-end rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary"
-      data-tache-id="${escapeHtml(tache.id)}"
-    >
-      <i class="fa-solid fa-upload text-xs"></i>
-      Envoyer
-    </button>
-  </div>
-` : ""}
+        ${openPhotoForm === tache.id ? renderPhotoUploadForm(tache.id) : ""}
       </div>
 
       <!-- Actions selon statut -->
@@ -321,6 +305,56 @@ function renderTacheCard(tache) {
           </button>
         ` : ""}
 
+      </div>
+    </div>
+  `;
+}
+
+function renderPhotoUploadForm(tacheId) {
+    const id = escapeHtml(tacheId);
+    return `
+    <div class="rounded-2xl border border-bordure bg-fond p-4">
+      <label
+        for="photoInput-${id}"
+        class="photo-dropzone group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-bordure bg-carte px-4 py-6 text-center transition hover:border-primary hover:bg-primary/5"
+        data-tache-id="${id}"
+      >
+        <div id="photoPreviewWrap-${id}" class="hidden">
+          <img id="photoPreview-${id}" class="mx-auto h-28 w-28 rounded-xl object-cover shadow-card" />
+          <p id="photoFileName-${id}" class="mt-2 max-w-[200px] truncate text-[11px] text-muted"></p>
+        </div>
+        <div id="photoPlaceholder-${id}" class="flex flex-col items-center gap-2">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:scale-110">
+            <i class="fa-solid fa-cloud-arrow-up text-base"></i>
+          </div>
+          <p class="text-xs font-bold text-texte">Cliquez ou glissez une photo ici</p>
+          <p class="text-[10px] text-muted">JPG, PNG — 10 Mo max</p>
+        </div>
+      </label>
+
+      <input
+        type="file"
+        accept="image/*"
+        id="photoInput-${id}"
+        class="photo-file-input hidden"
+        data-tache-id="${id}"
+      />
+
+      <div class="mt-3 flex items-center justify-end gap-2">
+        <button
+          class="btn-cancel-photo rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-muted transition hover:bg-fond"
+          data-tache-id="${id}"
+        >
+          Annuler
+        </button>
+        <button
+          class="btn-save-photo flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          data-tache-id="${id}"
+          disabled
+        >
+          <i class="fa-solid fa-upload text-xs"></i>
+          Envoyer
+        </button>
       </div>
     </div>
   `;
@@ -380,6 +414,46 @@ function bindEvents() {
             const id = btn.dataset.tacheId;
             openPhotoForm = openPhotoForm === id ? null : id;
             renderPage();
+        });
+    });
+
+    // Annuler l'ajout de photo
+    document.querySelectorAll(".btn-cancel-photo").forEach(btn => {
+        btn.addEventListener("click", () => {
+            openPhotoForm = null;
+            renderPage();
+        });
+    });
+
+    // Sélection de fichier (clic classique)
+    document.querySelectorAll(".photo-file-input").forEach(input => {
+        input.addEventListener("change", () => {
+            if (input.files?.[0]) afficherApercuPhoto(input.dataset.tacheId, input.files[0]);
+        });
+    });
+
+    // Drag & drop sur la zone
+    document.querySelectorAll(".photo-dropzone").forEach(zone => {
+        const tacheId = zone.dataset.tacheId;
+        const input = document.getElementById(`photoInput-${tacheId}`);
+
+        zone.addEventListener("dragover", e => {
+            e.preventDefault();
+            zone.classList.add("border-primary", "bg-primary/5");
+        });
+        zone.addEventListener("dragleave", () => {
+            zone.classList.remove("border-primary", "bg-primary/5");
+        });
+        zone.addEventListener("drop", e => {
+            e.preventDefault();
+            zone.classList.remove("border-primary", "bg-primary/5");
+            const file = e.dataTransfer.files?.[0];
+            if (file && input) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                afficherApercuPhoto(tacheId, file);
+            }
         });
     });
 
@@ -470,33 +544,51 @@ async function handleTerminer(tacheId, affectationId, btn) {
 }
 
 async function handleAjouterPhoto(tacheId, btn) {
-  const card  = document.querySelector(`[data-tache-id="${tacheId}"]`);
-  const input = card?.querySelector(".photo-file-input");
-  if (!input) return;
+    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
+    const input = card?.querySelector(".photo-file-input");
+    if (!input) return;
 
-  const file = input.files?.[0];
-  if (!file) {
-    showToast("Veuillez sélectionner une image.", "error");
-    return;
-  }
+    const file = input.files?.[0];
+    if (!file) {
+        showToast("Veuillez sélectionner une image.", "error");
+        return;
+    }
 
-  btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
 
-  try {
-    const url = await uploadImageCloudinary(file);
-    await createPhoto({ tacheId, url });
+    try {
+        const url = await uploadImageCloudinary(file);
+        await createPhoto({ tacheId, url });
 
-    photosByTache[tacheId] = await getPhotosByTache(tacheId);
-    openPhotoForm = null;
+        photosByTache[tacheId] = await getPhotosByTache(tacheId);
+        openPhotoForm = null;
 
-    showToast("Photo ajoutée.");
-    renderPage();
-  } catch (err) {
-    showToast(err.message, "error");
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-upload text-xs"></i> Envoyer`;
-  }
+        showToast("Photo ajoutée.");
+        renderPage();
+    } catch (err) {
+        showToast(err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-upload text-xs"></i> Envoyer`;
+    }
+}
+
+function afficherApercuPhoto(tacheId, file) {
+    const previewWrap = document.getElementById(`photoPreviewWrap-${tacheId}`);
+    const preview = document.getElementById(`photoPreview-${tacheId}`);
+    const fileName = document.getElementById(`photoFileName-${tacheId}`);
+    const placeholder = document.getElementById(`photoPlaceholder-${tacheId}`);
+    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
+    const btnSave = card?.querySelector(".btn-save-photo");
+
+    if (!previewWrap || !preview) return;
+
+    preview.src = URL.createObjectURL(file);
+    if (fileName) fileName.textContent = file.name;
+    previewWrap.classList.remove("hidden");
+    placeholder?.classList.add("hidden");
+
+    if (btnSave) btnSave.disabled = false;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
