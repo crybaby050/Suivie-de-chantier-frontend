@@ -15,7 +15,7 @@ let allProjets = [];
 let allUtilisateurs = [];
 let affectationsByTache = {};
 let photosByTache = {};
-let currentFilter = "En attente";
+let currentFilter = "A valider";
 
 export async function renderValidationTachesPage() {
     const app = document.getElementById("app");
@@ -51,9 +51,9 @@ export async function renderValidationTachesPage() {
 
 function renderPage() {
     const app = document.getElementById("app");
-    const FILTERS = ["En attente", "En cours", "Valider", "Tout"];
+    const FILTERS = ["A valider", "En cours", "Valider", "Tout"];
 
-    const filtered = allTaches.filter(t => currentFilter === "Tout" || t.statutTache === currentFilter);
+    const filtered = allTaches.filter(t => tacheCorrespondAuFiltre(t, currentFilter));
 
     app.innerHTML = `
     <div class="space-y-5">
@@ -71,7 +71,7 @@ function renderPage() {
             : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
             data-filter="${f}"
           >
-            ${f}
+            ${f === "A valider" ? "À valider" : f}
           </button>
         `).join("")}
       </div>
@@ -90,6 +90,29 @@ function renderPage() {
   `;
 
     bindEvents();
+}
+
+function tacheCorrespondAuFiltre(tache, filtre) {
+    const affectations = affectationsByTache[tache.id] ?? [];
+
+    if (filtre === "Tout") return true;
+
+    if (filtre === "A valider") {
+        // Au moins un ouvrier a soumis sa partie et attend une décision du chef
+        return affectations.some(a => a.statutPersonnel === "En attente");
+    }
+
+    if (filtre === "En cours") {
+        // Au moins un ouvrier travaille encore activement dessus
+        return affectations.some(a => ["Non commencer", "En cours", "Renvoyer"].includes(a.statutPersonnel));
+    }
+
+    if (filtre === "Valider") {
+        // Toutes les contributions sont validées
+        return affectations.length > 0 && affectations.every(a => a.statutPersonnel === "Valider");
+    }
+
+    return true;
 }
 
 function renderTacheValidationCard(tache) {
