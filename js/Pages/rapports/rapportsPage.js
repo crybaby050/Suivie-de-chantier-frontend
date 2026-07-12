@@ -1,6 +1,6 @@
 import { escapeHtml } from "../../Utils/html.js";
 import { showToast } from "../../Components/toast.js";
-import { isAdmin, isClient, canManage, getSession } from "../../Utils/auth.js";
+import { isAdmin, isClient, isChef, isOuvrier, canManage, getSession } from "../../Utils/auth.js";
 import {
     getRapports,
     getRapportsByProjet,
@@ -103,7 +103,7 @@ function renderPage() {
           <h1 class="text-2xl font-black text-texte sm:text-3xl">Rapports</h1>
           <p class="mt-1 text-sm text-muted">Suivez les rapports d'avancement de vos chantiers</p>
         </div>
-        ${canManage() ? `
+        ${(isChef() || isOuvrier()) ? `
           <button id="btnNewRapport" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
             <i class="fa-solid fa-plus text-xs"></i>
             Nouveau rapport
