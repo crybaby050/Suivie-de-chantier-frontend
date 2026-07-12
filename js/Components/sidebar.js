@@ -9,7 +9,6 @@ export function renderSidebar() {
         { page: "dashboard", label: "Dashboard", icon: "fa-gauge", always: true },
         { page: "projets", label: "Projets", icon: "fa-building", always: true },
         { page: "utilisateurs", label: "Utilisateurs", icon: "fa-users", admin: true },
-        { page: "materiaux", label: "Matériaux", icon: "fa-cubes", manage: true },
         { page: "rapports", label: "Rapports", icon: "fa-file-lines", always: true },
         { page: "signalements", label: "Signalements", icon: "fa-triangle-exclamation", manage: true },
         { page: "taches", label: "Mes tâches", icon: "fa-list-check", ouvrier: true },

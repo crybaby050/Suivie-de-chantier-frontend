@@ -3,7 +3,6 @@ import { requireAuth, isAdmin, isChef, isOuvrier, isClient, canManage } from "./
 import { renderDashboardPage } from "./Pages/dashboardPage.js";
 import { renderProjetsPage } from "./Pages/projets/projetsPage.js";
 import { renderUtilisateursPage } from "./Pages/utilisateurs/utilisateursPage.js";
-import { renderMateriauxPage } from "./Pages/materiauxPage.js";
 import { renderRapportsPage } from "./Pages/rapports/rapportsPage.js";
 import { renderSignalementsPage } from "./Pages/signalements/signalementsPage.js";
 import { renderTachesPage } from "./Pages/tachesPage.js";
@@ -19,7 +18,6 @@ const routes = {
     dashboard: renderDashboardPage,
     projets: renderProjetsPage,
     utilisateurs: renderUtilisateursPage,
-    materiaux: renderMateriauxPage,
     rapports: renderRapportsPage,
     signalements: renderSignalementsPage,
     taches: renderTachesPage,
@@ -30,7 +28,6 @@ const titles = {
     dashboard: "Dashboard",
     projets: "Projets",
     utilisateurs: "Utilisateurs",
-    materiaux: "Matériaux",
     rapports: "Rapports",
     signalements: "Signalements",
     taches: "Mes tâches",
@@ -39,7 +36,7 @@ const titles = {
 
 function canAccess(page) {
     if (isAdmin()) return true;
-    if (isChef()) return ["dashboard", "projets", "materiaux", "rapports", "signalements", "validationTaches"].includes(page);
+    if (isChef()) return ["dashboard", "projets", "rapports", "signalements", "validationTaches"].includes(page);
     if (isOuvrier()) return ["dashboard", "projets", "taches", "rapports", "signalements"].includes(page);
     if (isClient()) return ["dashboard", "projets", "rapports"].includes(page);
     return false;
