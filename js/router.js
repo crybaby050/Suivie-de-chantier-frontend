@@ -40,7 +40,7 @@ const titles = {
 function canAccess(page) {
     if (isAdmin()) return true;
     if (isChef()) return ["dashboard", "projets", "materiaux", "rapports", "signalements", "validationTaches"].includes(page);
-    if (isOuvrier()) return ["dashboard", "projets", "taches", "signalements"].includes(page);
+    if (isOuvrier()) return ["dashboard", "projets", "taches", "rapports", "signalements"].includes(page);
     if (isClient()) return ["dashboard", "projets", "rapports"].includes(page);
     return false;
 }
