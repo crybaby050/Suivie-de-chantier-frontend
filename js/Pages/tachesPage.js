@@ -8,7 +8,7 @@ import { getProjets } from "../Services/projetService.js";
 import { getPhotosByTache, createPhoto } from "../Services/photoService.js";
 import { uploadImageCloudinary } from "../Services/cloudinaryService.js";
 import { calculerStatutGlobalTache } from "../Utils/tacheStatutHelpers.js";
-
+import { openConfirm } from "../Components/modal.js";
 // ─── État local ───────────────────────────────────────────────────────────────
 let allTaches       = [];
 let allAffectations = []; // affectations DE L'OUVRIER CONNECTÉ uniquement
@@ -508,38 +508,39 @@ async function handleEnregistrerProgression(tacheId, affectationId, btn) {
   }
 }
 
-async function handleTerminer(tacheId, affectationId, btn) {
+function handleTerminer(tacheId, affectationId, btn) {
   if (!affectationId) return;
 
-  const confirme = window.confirm(
-    "Marquer votre partie comme terminée ? Elle attendra la validation du chef de chantier."
-  );
-  if (!confirme) return;
+  openConfirm({
+    message: "Marquer votre partie comme terminée ? Elle attendra la validation du chef de chantier.",
+    confirmLabel: "Marquer comme terminée",
+    onConfirm: async () => {
+      const tache = allTaches.find(t => t.id === tacheId);
+      if (!tache) return;
 
-  const tache = allTaches.find(t => t.id === tacheId);
-  if (!tache) return;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
 
-  btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
+      try {
+        await updateStatutAffectation(affectationId, "En attente");
+        await updateTache(tacheId, { ...tache, progression: 100 });
+        const tacheMaj = await recalculerEtSynchroniserTache(tacheId);
 
-  try {
-    await updateStatutAffectation(affectationId, "En attente");
-    await updateTache(tacheId, { ...tache, progression: 100 });
-    const tacheMaj = await recalculerEtSynchroniserTache(tacheId);
+        const idxT = allTaches.findIndex(t => t.id === tacheId);
+        if (idxT !== -1) allTaches[idxT] = { ...tacheMaj, progression: 100 };
 
-    const idxT = allTaches.findIndex(t => t.id === tacheId);
-    if (idxT !== -1) allTaches[idxT] = { ...tacheMaj, progression: 100 };
+        const idxA = allAffectations.findIndex(a => a.id === affectationId);
+        if (idxA !== -1) allAffectations[idxA] = { ...allAffectations[idxA], statutPersonnel: "En attente" };
 
-    const idxA = allAffectations.findIndex(a => a.id === affectationId);
-    if (idxA !== -1) allAffectations[idxA] = { ...allAffectations[idxA], statutPersonnel: "En attente" };
-
-    showToast("Votre partie a été soumise, en attente de validation.");
-    renderPage();
-  } catch (err) {
-    showToast(err.message, "error");
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xs"></i> Marquer ma partie comme terminée`;
-  }
+        showToast("Votre partie a été soumise, en attente de validation.");
+        renderPage();
+      } catch (err) {
+        showToast(err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xs"></i> Marquer ma partie comme terminée`;
+      }
+    },
+  });
 }
 
 function afficherApercuPhoto(tacheId, file) {
