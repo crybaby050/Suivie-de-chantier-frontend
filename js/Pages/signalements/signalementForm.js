@@ -7,7 +7,7 @@ import { getPhasesByProjet } from "../../Services/phaseService.js";
 import { getTachesByPhase } from "../../Services/tacheService.js";
 import { getRapportsByProjet } from "../../Services/rapportService.js";
 import { getSession } from "../../Utils/auth.js";
-import { formatDateCourte } from "./signalementsHelpers.js";
+import { formatDateCourte, getCibleInfo } from "./signalementsHelpers.js";
 
 const SIGNALEMENT_SCHEMA = {
     signalementCibleType: { rules: [Rules.required("Le type de cible est obligatoire.")], transform: v => v, as: "cibleType" },
@@ -15,11 +15,18 @@ const SIGNALEMENT_SCHEMA = {
     signalementDescription: { rules: [], transform: v => v.trim(), as: "description" },
 };
 
+const SIGNALEMENT_SCHEMA_RAPIDE = {
+    signalementTitre: { rules: [Rules.required("Le titre est obligatoire."), Rules.minLength(3, "Minimum 3 caractères.")], transform: v => v.trim(), as: "titre" },
+    signalementDescription: { rules: [], transform: v => v.trim(), as: "description" },
+};
+
 /**
- * @param {object[]} projets - projets accessibles à l'utilisateur connecté
+ * @param {object[]} projets - liste de projets, utilisée uniquement si aucune préselection
  * @param {Function} onSuccess
+ * @param {object|null} [preselection] - { cibleType, cibleLabel, projetId, phaseId?, tacheId?, rapportId? }
+ *   Si fourni, la cible est déjà connue : le formulaire n'affiche que titre + description.
  */
-export function openSignalementForm(projets = [], onSuccess) {
+export function openSignalementForm(projets = [], onSuccess, preselection = null) {
     let validator;
     const session = getSession();
 
@@ -29,25 +36,38 @@ export function openSignalementForm(projets = [], onSuccess) {
         confirmLabel: "Signaler",
         confirmIcon: "fa-flag",
         confirmClass: "bg-bloque shadow-bloque/20 hover:bg-bloque/80",
-        body: signalementFormBody(projets),
+        body: preselection ? signalementFormBodyRapide(preselection) : signalementFormBody(projets),
         onMount: modal => {
-            validator = createFormValidator(modal, SIGNALEMENT_SCHEMA);
-            bindCascade(modal, projets, session);
+            validator = createFormValidator(modal, preselection ? SIGNALEMENT_SCHEMA_RAPIDE : SIGNALEMENT_SCHEMA);
+            if (!preselection) bindCascade(modal, projets, session);
         },
         onConfirm: async () => {
             const data = validator.validate();
             if (!data) return false;
 
-            const zone = document.getElementById("signalementCibleZone");
-            const cibleData = lireCibleSelectionnee(zone, data.cibleType);
-            if (!cibleData) {
-                showToast("Veuillez sélectionner une cible valide.", "error");
-                return false;
+            let cibleType, cibleData;
+
+            if (preselection) {
+                cibleType = preselection.cibleType;
+                cibleData = {
+                    projetId: preselection.projetId,
+                    phaseId: preselection.phaseId ?? null,
+                    tacheId: preselection.tacheId ?? null,
+                    rapportId: preselection.rapportId ?? null,
+                };
+            } else {
+                cibleType = data.cibleType;
+                const zone = document.getElementById("signalementCibleZone");
+                cibleData = lireCibleSelectionnee(zone, cibleType);
+                if (!cibleData) {
+                    showToast("Veuillez sélectionner une cible valide.", "error");
+                    return false;
+                }
             }
 
             try {
                 await createSignalement({
-                    cibleType: data.cibleType,
+                    cibleType,
                     titre: data.titre,
                     description: data.description,
                     ...cibleData,
@@ -83,6 +103,44 @@ function signalementFormBody(projets) {
 
       <div id="signalementCibleZone">
         <p class="text-xs italic text-muted">Choisissez d'abord un type de cible.</p>
+      </div>
+
+      <div>
+        <label for="signalementTitre" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+          Titre <span class="text-bloque">*</span>
+        </label>
+        <input type="text" id="signalementTitre"
+          placeholder="ex: Retard de livraison"
+          class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+
+      <div>
+        <label for="signalementDescription" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+          Description
+        </label>
+        <textarea id="signalementDescription" rows="4"
+          placeholder="Décrivez le problème..."
+          class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
+        ></textarea>
+      </div>
+    </div>
+  `;
+}
+
+function signalementFormBodyRapide(preselection) {
+  const info = getCibleInfo(preselection.cibleType);
+
+  return `
+    <div class="grid gap-4">
+      <div class="flex items-center gap-3 rounded-xl bg-fond p-3">
+        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${info.bg} ${info.color}">
+          <i class="fa-solid ${info.icon} text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-muted">${info.label} signalé(e)</p>
+          <p class="truncate text-sm font-bold text-texte">${escapeHtml(preselection.cibleLabel ?? "")}</p>
+        </div>
       </div>
 
       <div>
