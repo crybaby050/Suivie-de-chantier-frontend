@@ -8,6 +8,8 @@ import { getUtilisateurs } from "../Services/utilisateurService.js";
 import { getAffectationsByTache, updateStatutAffectation } from "../Services/affectationService.js";
 import { getPhotosByTache } from "../Services/photoService.js";
 import { calculerStatutGlobalTache } from "../Utils/tacheStatutHelpers.js";
+import { getSession } from "../Utils/auth.js";
+import { filtrerProjetsAccessibles } from "../Utils/projetAccessHelpers.js";
 
 let allTaches = [];
 let allPhases = [];
@@ -18,9 +20,10 @@ let photosByTache = {};
 let currentFilter = "A valider";
 
 export async function renderValidationTachesPage() {
-    const app = document.getElementById("app");
+  const app = document.getElementById("app");
+  const session = getSession();
 
-    app.innerHTML = `
+  app.innerHTML = `
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex flex-col items-center gap-3">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-bordure border-t-primary"></div>
@@ -29,12 +32,19 @@ export async function renderValidationTachesPage() {
     </div>
   `;
 
-    [allTaches, allPhases, allProjets, allUtilisateurs] = await Promise.all([
-        getTaches(),
-        getPhases(),
-        getProjets(),
-        getUtilisateurs(),
-    ]);
+  const [projetsBruts, phasesBrutes, tachesBrutes, utilisateurs] = await Promise.all([
+    getProjets(),
+    getPhases(),
+    getTaches(),
+    getUtilisateurs(),
+  ]);
+
+  allProjets = await filtrerProjetsAccessibles(projetsBruts, session);
+  const projetIdsAccessibles = new Set(allProjets.map(p => p.id));
+  allPhases = phasesBrutes.filter(ph => projetIdsAccessibles.has(ph.projetId));
+  const phaseIdsAccessibles = new Set(allPhases.map(ph => ph.id));
+  allTaches = tachesBrutes.filter(t => phaseIdsAccessibles.has(t.phaseId));
+  allUtilisateurs = utilisateurs;
 
     const entriesAff = await Promise.all(
         allTaches.map(async t => [t.id, await getAffectationsByTache(t.id)])
