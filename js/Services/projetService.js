@@ -51,36 +51,23 @@ return result;
 }
 
 export async function updateProjet(id, data) {
-    required(data.nom, "Le nom du projet est obligatoire.");
-    required(data.chefId, "Le chef de chantier est obligatoire.");
+required(data.nom, "Le nom du projet est obligatoire.");
+required(data.chefId, "Le chef de chantier est obligatoire.");
 
-    // Récupérer l'ancien projet pour comparer le chef
-    const ancienProjet = await apiRequest(
-        `${ENDPOINTS.projets}/${id}`,
-        {},
-        "Impossible de charger le projet."
-    );
-
-    const result = await apiRequest(
-        `${ENDPOINTS.projets}/${id}`,
+const result = await apiRequest(
+`${ENDPOINTS.projets}/${id}`,
         { method: "PATCH", body: JSON.stringify(normalizeProjet({ id, ...data })) },
-        "Impossible de modifier le projet."
+"Impossible de modifier le projet."
     );
 
-    // Chef changé : libérer l'ancien, occuper le nouveau
-    if (ancienProjet.chefId && ancienProjet.chefId !== data.chefId) {
-        await updateDisponibilite(ancienProjet.chefId, "Disponible");
-        await updateDisponibilite(data.chefId, "Occuper");
+await assurerChefDansMembres(id, data.chefId);
+
+// Si le projet est terminé ou suspendu, libérer tous les membres
+if (["Terminer", "Suspendu"].includes(data.statutProjet)) {
+await libererMembres(id);
     }
 
-    // Projet terminé ou suspendu : libérer tout le monde
-    if (["Terminer", "Suspendu"].includes(data.statutProjet)) {
-        await libererMembres(id);
-        // Libérer aussi le chef
-        await updateDisponibilite(data.chefId, "Disponible");
-    }
-
-    return result;
+return result;
 }
 
 export async function deleteProjet(id) {
