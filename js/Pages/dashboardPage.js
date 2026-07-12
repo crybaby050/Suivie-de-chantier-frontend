@@ -5,18 +5,26 @@ import { getUtilisateurs } from "../Services/utilisateurService.js";
 import { escapeHtml } from "../Utils/html.js";
 import { getPhases } from "../Services/phaseService.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../Utils/progressionHelpers.js";
+import { filtrerProjetsAccessibles } from "../Utils/projetAccessHelpers.js";
 
 export async function renderDashboardPage() {
     console.log("Dashboard appelé");
     const app = document.getElementById("app");
     const session = getSession();
 
-    const [projets, taches, utilisateurs, phases] = await Promise.all([
+    // Chargement des données
+    const [projetsBruts, tachesBrutes, utilisateurs, phases] = await Promise.all([
         getProjets(),
         getTaches(),
         isAdmin() ? getUtilisateurs() : Promise.resolve([]),
         getPhases(),
     ]);
+
+    const projets = await filtrerProjetsAccessibles(projetsBruts, session);
+    const projetIdsAccessibles = new Set(projets.map(p => p.id));
+    const phasesAccessibles = phases.filter(ph => projetIdsAccessibles.has(ph.projetId));
+    const phaseIdsAccessibles = new Set(phasesAccessibles.map(ph => ph.id));
+    const taches = tachesBrutes.filter(t => phaseIdsAccessibles.has(t.phaseId));
 
     const progressionParProjet = {};
     projets.forEach(projet => {

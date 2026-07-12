@@ -11,6 +11,7 @@ import { getUtilisateurs } from "../../Services/utilisateurService.js";
 import { getStatutBadge, getCibleInfo, formatDate } from "./signalementsHelpers.js";
 import { openSignalementForm } from "./signalementForm.js";
 import { renderSignalementDetail } from "./signalementDetail.js";
+import { filtrerProjetsAccessibles } from "../../Utils/projetAccessHelpers.js";
 
 let allSignalements = [];
 let allProjets = [];
@@ -42,15 +43,7 @@ export async function renderSignalementsPage() {
         getUtilisateurs(),
     ]);
 
-    if (!isAdmin()) {
-        const memberships = await apiRequest(
-            `${ENDPOINTS.projetMembres}?utilisateurId=${session.id}`,
-            {},
-            "Impossible de charger vos projets."
-        );
-        const projetIdsAccessibles = memberships.map(m => m.projetId);
-        allProjets = allProjets.filter(p => projetIdsAccessibles.includes(p.id));
-    }
+    allProjets = await filtrerProjetsAccessibles(allProjets, session);
 
     if (isAdmin()) {
         allSignalements = await getSignalements();

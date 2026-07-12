@@ -7,11 +7,10 @@ import {
 } from "../../Services/rapportService.js";
 import { getProjets } from "../../Services/projetService.js";
 import { getUtilisateurs } from "../../Services/utilisateurService.js";
-import { apiRequest } from "../../Services/apiClient.js";
-import { ENDPOINTS } from "../../Config/api.js";
 import { getStatutBadge, formatDate, formatDateCourte, getInitials } from "./rapportsHelpers.js";
 import { openRapportForm } from "./rapportForm.js";
 import { renderRapportDetail } from "./rapportDetail.js";
+import { filtrerProjetsAccessibles } from "../../Utils/projetAccessHelpers.js";
 
 // ─── État local ───────────────────────────────────────────────────────────────
 let allRapports = [];
@@ -40,15 +39,7 @@ export async function renderRapportsPage() {
     ]);
 
     // Filtrer les projets accessibles selon le rôle
-    if (!isAdmin()) {
-        const memberships = await apiRequest(
-            `${ENDPOINTS.projetMembres}?utilisateurId=${session.id}`,
-            {},
-            "Impossible de charger vos projets."
-        );
-        const projetIdsAccessibles = memberships.map(m => m.projetId);
-        allProjets = allProjets.filter(p => projetIdsAccessibles.includes(p.id));
-    }
+    allProjets = await filtrerProjetsAccessibles(allProjets, session);
 
     // Charger les rapports selon les projets accessibles
     if (isAdmin()) {

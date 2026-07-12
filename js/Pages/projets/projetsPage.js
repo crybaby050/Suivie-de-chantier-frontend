@@ -9,6 +9,8 @@ import { getPhases } from "../../Services/phaseService.js";
 import { getTaches } from "../../Services/tacheService.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 import { canManage, isAdmin } from "../../Utils/auth.js";
+import { getSession } from "../../Utils/auth.js";
+import { filtrerProjetsAccessibles } from "../../Utils/projetAccessHelpers.js";
 
 let currentFilter = "Tout";
 let currentView = "liste";
@@ -28,15 +30,17 @@ export async function renderProjetsPage() {
     </div>
   `;
 
-    const [projets, utilisateurs, phases, taches] = await Promise.all([
-        getProjets(),
-        getUtilisateurs(),
-        getPhases(),
-        getTaches(),
-    ]);
-    setAllProjets(projets);
-    setAllUtilisateurs(utilisateurs);
-    progressionParProjet = calculerProgressionParProjet(projets, phases, taches);
+    const session = getSession();
+    const [projetsBruts, utilisateurs, phases, taches] = await Promise.all([
+    getProjets(),
+    getUtilisateurs(),
+    getPhases(),
+    getTaches(),
+]);
+const projets = await filtrerProjetsAccessibles(projetsBruts, session);
+setAllProjets(projets);
+setAllUtilisateurs(utilisateurs);
+progressionParProjet = calculerProgressionParProjet(projets, phases, taches);
 
     renderPage();
 }
