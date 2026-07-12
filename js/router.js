@@ -4,7 +4,7 @@ import { renderDashboardPage } from "./Pages/dashboardPage.js";
 import { renderProjetsPage } from "./Pages/projets/projetsPage.js";
 import { renderUtilisateursPage } from "./Pages/utilisateurs/utilisateursPage.js";
 import { renderMateriauxPage } from "./Pages/materiauxPage.js";
-import { renderRapportsPage } from "./Pages/rapportsPage.js";
+import { renderRapportsPage } from "./Pages/rapports/rapportsPage.js";
 import { renderSignalementsPage } from "./Pages/signalementsPage.js";
 import { renderTachesPage } from "./Pages/tachesPage.js";
 import {
