@@ -1,6 +1,7 @@
 import { escapeHtml } from "../../Utils/html.js";
 import { openModal } from "../../Components/modal.js";
-import { canManage } from "../../Utils/auth.js";
+import { canManage, isAdmin } from "../../Utils/auth.js";
+import { openSignalementForm } from "../signalements/signalementForm.js";
 import { getStatutBadge, formatDate, getInitials } from "./projetsHelpers.js";
 import { allUtilisateurs } from "./projetsState.js";
 import { openTacheForm } from "./tacheForm.js";
@@ -9,7 +10,7 @@ import { openTacheForm } from "./tacheForm.js";
  * Affiche le détail complet d'une tâche : description, dates,
  * statut, et la liste des personnes assignées avec leur statut individuel.
  */
-export function openTacheDetail(tache, affectations, phaseId, onChanged) {
+export function openTacheDetail(tache, affectations, phaseId, projetId, onChanged) {
     const assignes = affectations
         .map(a => ({ user: allUtilisateurs.find(u => u.id === a.utilisateurId), statutPersonnel: a.statutPersonnel }))
         .filter(a => a.user);
@@ -68,6 +69,12 @@ export function openTacheDetail(tache, affectations, phaseId, onChanged) {
             <i class="fa-solid fa-pen text-xs"></i> Modifier la tâche
           </button>
         ` : ""}
+        ${!isAdmin() ? `
+          <button id="btnSignalerTache" type="button"
+            class="w-full rounded-xl border border-bloque/30 bg-bloque/5 px-4 py-2 text-sm font-bold text-bloque transition hover:bg-bloque/10">
+            <i class="fa-solid fa-triangle-exclamation text-xs"></i> Signaler cette tâche
+          </button>
+        ` : ""}
       </div>
     `,
         onMount: (modal) => { modalRoot = modal; },
@@ -78,8 +85,17 @@ export function openTacheDetail(tache, affectations, phaseId, onChanged) {
     // si on en ouvre une seconde par-dessus. Si `openTacheForm` ne s'affiche
     // pas correctement après un clic sur "Modifier", montre-moi Components/modal.js.
     setTimeout(() => {
-        modalRoot?.querySelector("#btnModifierTache")?.addEventListener("click", () => {
-            openTacheForm(phaseId, onChanged, tache, affectations);
+    modalRoot?.querySelector("#btnModifierTache")?.addEventListener("click", () => {
+        openTacheForm(phaseId, onChanged, tache, affectations);
+    });
+    modalRoot?.querySelector("#btnSignalerTache")?.addEventListener("click", () => {
+        openSignalementForm([], () => {}, {
+            cibleType: "Tache",
+            cibleLabel: tache.titre,
+            projetId,
+            phaseId,
+            tacheId: tache.id,
         });
-    }, 0);
+    });
+}, 0);
 }
