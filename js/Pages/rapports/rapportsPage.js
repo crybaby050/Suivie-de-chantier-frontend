@@ -169,6 +169,45 @@ function renderPage() {
     bindEvents();
 }
 
+function renderRapportsListe(filtered) {
+    if (filtered.length === 0) {
+        return `
+          <div class="rounded-2xl border border-dashed border-bordure bg-carte py-16 text-center">
+            <i class="fa-solid fa-file-lines text-3xl text-muted/30"></i>
+            <p class="mt-3 text-sm font-semibold text-muted">Aucun rapport trouvé.</p>
+          </div>
+        `;
+    }
+
+    // Chef / Ouvrier / Client : liste simple
+    if (!isAdmin()) {
+        return `<div class="space-y-3">${filtered.map(r => renderRapportCard(r)).join("")}</div>`;
+    }
+
+    // Admin : regroupé par projet
+    const groupes = {};
+    filtered.forEach(r => {
+        if (!groupes[r.projetId]) groupes[r.projetId] = [];
+        groupes[r.projetId].push(r);
+    });
+
+    return Object.entries(groupes).map(([projetId, rapports]) => {
+        const projet = allProjets.find(p => p.id === projetId);
+        return `
+          <div class="mb-6">
+            <div class="mb-2 flex items-center gap-2 border-b border-bordure pb-2">
+              <i class="fa-solid fa-building text-xs text-primary/60"></i>
+              <h3 class="text-sm font-black text-texte">${escapeHtml(projet?.nom ?? "Projet inconnu")}</h3>
+              <span class="text-xs text-muted">(${rapports.length})</span>
+            </div>
+            <div class="space-y-3">
+              ${rapports.map(r => renderRapportCard(r)).join("")}
+            </div>
+          </div>
+        `;
+    }).join("");
+}
+
 // ─── Card rapport ─────────────────────────────────────────────────────────────
 function renderRapportCard(rapport) {
     const projet = allProjets.find(p => p.id === rapport.projetId);
