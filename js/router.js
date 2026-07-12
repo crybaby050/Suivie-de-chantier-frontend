@@ -12,7 +12,7 @@ import {
     runBrickLoader,
     getBrickCycleDuration
 } from "./Components/brickLoader.js";
-
+import { renderValidationTachesPage } from "./Pages/validationTachesPage.js";
 
 
 const routes = {
@@ -23,6 +23,7 @@ const routes = {
     rapports: renderRapportsPage,
     signalements: renderSignalementsPage,
     taches: renderTachesPage,
+    validationTaches: renderValidationTachesPage,
 };
 
 const titles = {
@@ -33,11 +34,12 @@ const titles = {
     rapports: "Rapports",
     signalements: "Signalements",
     taches: "Mes tâches",
+    validationTaches: "Validation des tâches",
 };
 
 function canAccess(page) {
     if (isAdmin()) return true;
-    if (isChef()) return ["dashboard", "projets", "materiaux", "rapports", "signalements"].includes(page);
+    if (isChef()) return ["dashboard", "projets", "materiaux", "rapports", "signalements", "validationTaches"].includes(page);
     if (isOuvrier()) return ["dashboard", "projets", "taches", "signalements"].includes(page);
     if (isClient()) return ["dashboard", "projets", "rapports"].includes(page);
     return false;

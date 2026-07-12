@@ -1,4 +1,3 @@
-import { canManage } from "../../Utils/auth.js";
 import { escapeHtml } from "../../Utils/html.js";
 import { getProjets } from "../../Services/projetService.js";
 import { getUtilisateurs } from "../../Services/utilisateurService.js";
@@ -9,6 +8,7 @@ import { renderProjetDetail } from "./projetDetail.js";
 import { getPhases } from "../../Services/phaseService.js";
 import { getTaches } from "../../Services/tacheService.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
+import { canManage, isAdmin } from "../../Utils/auth.js";
 
 let currentFilter = "Tout";
 let currentView = "liste";
@@ -72,17 +72,19 @@ function renderPage() {
           <p class="mt-1 text-sm text-muted">Contrôler et suivre la progression de vos chantiers en temps réel</p>
         </div>
         ${canManage() ? `
-          <div class="flex flex-shrink-0 gap-2">
-            <button id="btnRapport" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-texte shadow-card transition hover:bg-fond">
-              <i class="fa-solid fa-file-lines text-xs"></i>
-              <span class="hidden sm:inline">Rapport</span>
-            </button>
-            <button id="btnNewProjet" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
-              <i class="fa-solid fa-plus text-xs"></i>
-              <span>Nouveau projet</span>
-            </button>
-          </div>
-        ` : ""}
+  <div class="flex flex-shrink-0 gap-2">
+    <button id="btnRapport" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-texte shadow-card transition hover:bg-fond">
+      <i class="fa-solid fa-file-lines text-xs"></i>
+      <span class="hidden sm:inline">Rapport</span>
+    </button>
+    ${isAdmin() ? `
+      <button id="btnNewProjet" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
+        <i class="fa-solid fa-plus text-xs"></i>
+        <span>Nouveau projet</span>
+      </button>
+    ` : ""}
+  </div>
+` : ""}
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
