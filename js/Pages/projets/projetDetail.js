@@ -122,9 +122,9 @@ export async function renderProjetDetail(projetId) {
       <button
         id="btnTerminerProjet"
         class="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-soft transition
-          ${toutesLesPhasesTerminees(phases) ? "bg-succes hover:bg-succes/80" : "cursor-not-allowed bg-muted/30"}"
-        ${toutesLesPhasesTerminees(phases) ? "" : "disabled"}
-        title="${toutesLesPhasesTerminees(phases) ? "Terminer le projet" : "Disponible une fois toutes les phases terminées"}"
+          ${toutesLesPhasesTerminees(phases, tachesByPhaseId) ? "bg-succes hover:bg-succes/80" : "cursor-not-allowed bg-muted/30"}"
+        ${toutesLesPhasesTerminees(phases, tachesByPhaseId) ? "" : "disabled"}
+        title="${toutesLesPhasesTerminees(phases, tachesByPhaseId) ? "Terminer le projet" : "Disponible une fois toutes les phases terminées"}"
       >
         <i class="fa-solid fa-flag-checkered text-xs"></i>
         <span>Terminer le projet</span>
@@ -223,7 +223,7 @@ export async function renderProjetDetail(projetId) {
         });
 
         document.getElementById("btnTerminerProjet")?.addEventListener("click", async () => {
-            if (!toutesLesPhasesTerminees(phases)) return;
+            if (!toutesLesPhasesTerminees(phases, tachesByPhaseId)) return;
             openConfirm({
                 message: `Marquer le projet "${projet.nom}" comme terminé ?`,
                 confirmLabel: "Terminer",
@@ -296,8 +296,9 @@ export async function renderProjetDetail(projetId) {
     renderDetail();
 }
 
-function toutesLesPhasesTerminees(phases) {
-    return phases.length > 0 && phases.every(p => p.statutPhase === "Terminer");
+function toutesLesPhasesTerminees(phases, tachesByPhaseId) {
+    if (phases.length === 0) return false;
+    return phases.every(p => calculerProgressionPhase(tachesByPhaseId[p.id] ?? []) === 100);
 }
 
 // ─── Onglet Vue d'ensemble ────────────────────────────────────────────────────
