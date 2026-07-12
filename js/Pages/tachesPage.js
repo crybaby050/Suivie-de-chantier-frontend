@@ -2,31 +2,33 @@ import { escapeHtml } from "../Utils/html.js";
 import { showToast } from "../Components/toast.js";
 import { getSession } from "../Utils/auth.js";
 import { getTaches, updateTache } from "../Services/tacheService.js";
-import { getAffectationsByUtilisateur, updateStatutAffectation } from "../Services/affectationService.js";
+import { getAffectationsByUtilisateur, getAffectationsByTache, updateStatutAffectation } from "../Services/affectationService.js";
 import { getPhases } from "../Services/phaseService.js";
 import { getProjets } from "../Services/projetService.js";
 import { getPhotosByTache, createPhoto } from "../Services/photoService.js";
 import { uploadImageCloudinary } from "../Services/cloudinaryService.js";
+import { calculerStatutGlobalTache } from "../Utils/tacheStatutHelpers.js";
 
 // ─── État local ───────────────────────────────────────────────────────────────
-let allTaches = [];
-let allAffectations = [];
-let allPhases = [];
-let allProjets = [];
-let photosByTache = {}; // { [tacheId]: Photo[] }
-let openPhotoForm = null; // id de la tâche dont le formulaire "ajouter photo" est ouvert
-let currentFilter = "Tout";
+let allTaches       = [];
+let allAffectations = []; // affectations DE L'OUVRIER CONNECTÉ uniquement
+let allPhases       = [];
+let allProjets      = [];
+let photosByTache    = {};
+let openPhotoForm    = null;
+let currentFilter    = "Tout";
 
-// Statuts que l'ouvrier peut librement retravailler (progression + soumission)
+// Statuts (personnels) que l'ouvrier peut librement retravailler
 const STATUTS_EDITABLES = ["En cours", "Renvoyer"];
-// Statuts totalement verrouillés pour l'ouvrier
+// Statuts (personnels) totalement verrouillés pour l'ouvrier
 const STATUTS_VERROUILLES = ["En attente", "Valider", "Terminer"];
+
 // ─── Rendu principal ──────────────────────────────────────────────────────────
 export async function renderTachesPage() {
-    const app = document.getElementById("app");
-    const session = getSession();
+  const app     = document.getElementById("app");
+  const session = getSession();
 
-    app.innerHTML = `
+  app.innerHTML = `
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex flex-col items-center gap-3">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-bordure border-t-primary"></div>
@@ -35,55 +37,64 @@ export async function renderTachesPage() {
     </div>
   `;
 
-    [allAffectations, allTaches, allPhases, allProjets] = await Promise.all([
-        getAffectationsByUtilisateur(session.id),
-        getTaches(),
-        getPhases(),
-        getProjets(),
-    ]);
+  [allAffectations, allTaches, allPhases, allProjets] = await Promise.all([
+    getAffectationsByUtilisateur(session.id),
+    getTaches(),
+    getPhases(),
+    getProjets(),
+  ]);
 
-    const tacheIds = allAffectations.map(a => a.tacheId);
-    allTaches = allTaches.filter(t => tacheIds.includes(t.id));
+  const tacheIds = allAffectations.map(a => a.tacheId);
+  allTaches = allTaches.filter(t => tacheIds.includes(t.id));
 
-    await chargerPhotos();
+  await chargerPhotos();
 
-    renderPage();
+  renderPage();
 }
 
 async function chargerPhotos() {
-    const entries = await Promise.all(
-        allTaches.map(async t => [t.id, await getPhotosByTache(t.id)])
-    );
-    photosByTache = Object.fromEntries(entries);
+  const entries = await Promise.all(
+    allTaches.map(async t => [t.id, await getPhotosByTache(t.id)])
+  );
+  photosByTache = Object.fromEntries(entries);
 }
 
 // ─── Rendu page ───────────────────────────────────────────────────────────────
 function renderPage() {
-    const app = document.getElementById("app");
+  const app = document.getElementById("app");
 
-    const FILTERS = ["Tout", "A faire", "En cours", "En attente", "Renvoyer", "Valider"];
+  const FILTERS = ["Tout", "A faire", "En cours", "En attente", "Renvoyer", "Valider"];
 
-    const filtered = allTaches.filter(t =>
-        currentFilter === "Tout" || t.statutTache === currentFilter
-    );
+  const filtered = allTaches.filter(t => {
+    if (currentFilter === "Tout") return true;
+    const affectation = allAffectations.find(a => a.tacheId === t.id);
+    const statutPersonnel = affectation?.statutPersonnel ?? "Non commencer";
+    const statutAffiche = statutPersonnel === "Non commencer" ? "A faire" : statutPersonnel;
+    return statutAffiche === currentFilter;
+  });
 
-    const stats = [
-        { label: "Total", value: allTaches.length, icon: "fa-list-check", bg: "bg-primary/10", color: "text-primary" },
-        { label: "À faire", value: allTaches.filter(t => t.statutTache === "A faire").length, icon: "fa-circle", bg: "bg-attente/10", color: "text-attente" },
-        { label: "En cours", value: allTaches.filter(t => t.statutTache === "En cours").length, icon: "fa-spinner", bg: "bg-secondary/10", color: "text-secondary" },
-        { label: "Validées", value: allTaches.filter(t => t.statutTache === "Valider").length, icon: "fa-circle-check", bg: "bg-succes/10", color: "text-succes" },
-    ];
+  const compterParStatut = (label) => allTaches.filter(t => {
+    const affectation = allAffectations.find(a => a.tacheId === t.id);
+    const statutPersonnel = affectation?.statutPersonnel ?? "Non commencer";
+    const statutAffiche = statutPersonnel === "Non commencer" ? "A faire" : statutPersonnel;
+    return statutAffiche === label;
+  }).length;
 
-    app.innerHTML = `
+  const stats = [
+    { label: "Total",       value: allTaches.length,                      icon: "fa-list-check",   bg: "bg-primary/10",   color: "text-primary" },
+    { label: "À faire",     value: compterParStatut("A faire"),           icon: "fa-circle",       bg: "bg-attente/10",   color: "text-attente" },
+    { label: "En cours",    value: compterParStatut("En cours"),          icon: "fa-spinner",      bg: "bg-secondary/10", color: "text-secondary" },
+    { label: "Validées",    value: compterParStatut("Valider"),           icon: "fa-circle-check", bg: "bg-succes/10",    color: "text-succes" },
+  ];
+
+  app.innerHTML = `
     <div class="space-y-5">
 
-      <!-- En-tête -->
       <div>
         <h1 class="text-2xl font-black text-texte sm:text-3xl">Mes tâches</h1>
         <p class="mt-1 text-sm text-muted">Suivez et mettez à jour l'avancement de vos tâches assignées</p>
       </div>
 
-      <!-- Stats -->
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         ${stats.map(s => `
           <div class="rounded-2xl bg-carte p-4 shadow-card">
@@ -100,14 +111,13 @@ function renderPage() {
         `).join("")}
       </div>
 
-      <!-- Filtres -->
       <div class="flex flex-wrap gap-2">
         ${FILTERS.map(f => `
           <button
             class="filter-btn rounded-xl px-4 py-2 text-sm font-bold transition
               ${currentFilter === f
-            ? "bg-primary text-white shadow-soft"
-            : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
+                ? "bg-primary text-white shadow-soft"
+                : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
             data-filter="${f}"
           >
             ${f}
@@ -119,48 +129,49 @@ function renderPage() {
 
       <div id="tachesContent" class="space-y-3">
         ${filtered.length === 0
-            ? `
+          ? `
             <div class="rounded-2xl border border-dashed border-bordure bg-carte py-16 text-center">
               <i class="fa-solid fa-list-check text-3xl text-muted/30"></i>
               <p class="mt-3 text-sm font-semibold text-muted">Aucune tâche trouvée.</p>
             </div>
           `
-            : filtered.map(tache => renderTacheCard(tache)).join("")
+          : filtered.map(tache => renderTacheCard(tache)).join("")
         }
       </div>
 
     </div>
   `;
 
-    bindEvents();
+  bindEvents();
 }
 
 // ─── Card tâche ───────────────────────────────────────────────────────────────
 function renderTacheCard(tache) {
-    const phase = allPhases.find(p => p.id === tache.phaseId);
-    const projet = allProjets.find(p => p.id === phase?.projetId);
-    const affectation = allAffectations.find(a => a.tacheId === tache.id);
-    const statut = getStatutBadge(tache.statutTache);
-    const progression = tache.progression ?? 0;
-    const photos = photosByTache[tache.id] ?? [];
+  const phase       = allPhases.find(p => p.id === tache.phaseId);
+  const projet      = allProjets.find(p => p.id === phase?.projetId);
+  const affectation = allAffectations.find(a => a.tacheId === tache.id);
+  const statutPersonnel = affectation?.statutPersonnel ?? "Non commencer";
+  const progression = tache.progression ?? 0;
+  const photos      = photosByTache[tache.id] ?? [];
 
-    const estEditable = STATUTS_EDITABLES.includes(tache.statutTache);
-    const estVerrouille = STATUTS_VERROUILLES.includes(tache.statutTache);
-    const estAFaire = tache.statutTache === "A faire";
-    const estRenvoyee = tache.statutTache === "Renvoyer";
-    const estEnAttente = tache.statutTache === "En attente";
-    const estValidee = tache.statutTache === "Valider";
-    const estTerminee = tache.statutTache === "Terminer";
-    const peutAjouterPhoto = !estValidee && !estTerminee;
+  // Toute la logique d'affichage se base sur LA PROPRE affectation de l'ouvrier,
+  // pas sur le statut global de la tâche (qui dépend de tous les ouvriers assignés).
+  const estEditable   = STATUTS_EDITABLES.includes(statutPersonnel);
+  const estAFaire     = statutPersonnel === "Non commencer";
+  const estRenvoyee   = statutPersonnel === "Renvoyer";
+  const estEnAttente  = statutPersonnel === "En attente";
+  const estValidee    = STATUTS_VERROUILLES.includes(statutPersonnel) && !estEnAttente;
+  const peutAjouterPhoto = !estValidee;
 
-    return `
+  const statutAffiche = estAFaire ? "A faire" : statutPersonnel;
+
+  return `
     <div class="rounded-2xl border border-bordure bg-carte p-5 shadow-card transition hover:shadow-soft" data-tache-id="${escapeHtml(tache.id)}">
 
-      <!-- Header card -->
       <div class="mb-4 flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2 mb-1">
-            ${statut}
+            ${getStatutBadge(statutAffiche)}
             ${projet ? `<span class="text-xs text-muted">${escapeHtml(projet.nom)}</span>` : ""}
             ${phase ? `<span class="text-xs text-muted">→ ${escapeHtml(phase.libelle)}</span>` : ""}
           </div>
@@ -169,31 +180,27 @@ function renderTacheCard(tache) {
         </div>
       </div>
 
-      <!-- Bannière renvoi -->
       ${estRenvoyee ? `
         <div class="mb-4 flex items-start gap-2 rounded-xl bg-bloque/10 px-3 py-2.5 text-xs font-semibold text-bloque">
           <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-          <span>Cette tâche vous a été renvoyée par le chef de chantier. Corrigez et resoumettez-la.</span>
+          <span>Votre contribution vous a été renvoyée par le chef de chantier. Corrigez et resoumettez.</span>
         </div>
       ` : ""}
 
-      <!-- Bannière attente -->
       ${estEnAttente ? `
         <div class="mb-4 flex items-start gap-2 rounded-xl bg-attente/10 px-3 py-2.5 text-xs font-semibold text-attente">
           <i class="fa-solid fa-hourglass-half mt-0.5"></i>
-          <span>En attente de validation du chef de chantier. Vous ne pouvez plus modifier cette tâche pour le moment.</span>
+          <span>Votre partie est en attente de validation du chef de chantier.</span>
         </div>
       ` : ""}
 
-      <!-- Bannière validée -->
       ${estValidee ? `
         <div class="mb-4 flex items-start gap-2 rounded-xl bg-succes/10 px-3 py-2.5 text-xs font-semibold text-succes">
           <i class="fa-solid fa-circle-check mt-0.5"></i>
-          <span>Tâche validée par le chef de chantier. Aucune modification possible.</span>
+          <span>Votre contribution a été validée. Aucune modification possible.</span>
         </div>
       ` : ""}
 
-      <!-- Dates -->
       <div class="mb-4 flex flex-wrap gap-4 text-xs text-muted">
         <div class="flex items-center gap-1.5">
           <i class="fa-solid fa-calendar-days text-primary/50"></i>
@@ -205,26 +212,19 @@ function renderTacheCard(tache) {
         </div>
       </div>
 
-      <!-- Progression -->
       <div class="mb-4">
         <div class="mb-1.5 flex items-center justify-between">
           <span class="text-xs font-bold text-texte">Progression</span>
           <span class="text-xs font-black text-primary">${progression}%</span>
         </div>
         <div class="h-2.5 w-full overflow-hidden rounded-full bg-fond">
-          <div
-            class="h-2.5 rounded-full transition-all duration-500 ${getProgressionColor(progression)}"
-            style="width:${progression}%"
-          ></div>
+          <div class="h-2.5 rounded-full transition-all duration-500 ${getProgressionColor(progression)}" style="width:${progression}%"></div>
         </div>
       </div>
 
       ${estEditable ? `
-        <!-- Slider progression (éditable) -->
         <div class="mb-4">
-          <label class="mb-1.5 block text-xs font-bold text-muted">
-            Mettre à jour la progression
-          </label>
+          <label class="mb-1.5 block text-xs font-bold text-muted">Mettre à jour la progression</label>
           <input
             type="range"
             class="progression-slider w-full accent-primary"
@@ -240,17 +240,13 @@ function renderTacheCard(tache) {
         </div>
       ` : ""}
 
-      <!-- Photos -->
       <div class="mb-4 border-t border-bordure pt-4">
         <div class="mb-2 flex items-center justify-between">
           <span class="text-xs font-bold text-texte">
             <i class="fa-solid fa-camera text-primary/60"></i> Photos (${photos.length})
           </span>
           ${peutAjouterPhoto ? `
-            <button
-              class="btn-toggle-photo text-xs font-bold text-primary hover:underline"
-              data-tache-id="${escapeHtml(tache.id)}"
-            >
+            <button class="btn-toggle-photo text-xs font-bold text-primary hover:underline" data-tache-id="${escapeHtml(tache.id)}">
               ${openPhotoForm === tache.id ? "Fermer" : "+ Ajouter"}
             </button>
           ` : ""}
@@ -269,7 +265,6 @@ function renderTacheCard(tache) {
         ${openPhotoForm === tache.id ? renderPhotoUploadForm(tache.id) : ""}
       </div>
 
-      <!-- Actions selon statut -->
       <div class="flex flex-wrap items-center justify-end gap-3 border-t border-bordure pt-4">
 
         ${estAFaire ? `
@@ -287,6 +282,7 @@ function renderTacheCard(tache) {
           <button
             class="btn-save-progression flex items-center gap-2 rounded-xl border border-bordure bg-fond px-4 py-2 text-xs font-bold text-texte transition hover:bg-carte"
             data-tache-id="${escapeHtml(tache.id)}"
+            data-affectation-id="${escapeHtml(affectation?.id ?? "")}"
           >
             <i class="fa-solid fa-floppy-disk text-xs"></i>
             Enregistrer la progression
@@ -298,10 +294,10 @@ function renderTacheCard(tache) {
             data-tache-id="${escapeHtml(tache.id)}"
             data-affectation-id="${escapeHtml(affectation?.id ?? "")}"
             ${progression !== 100 ? "disabled" : ""}
-            title="${progression !== 100 ? "Disponible une fois la progression à 100%" : "Soumettre pour validation"}"
+            title="${progression !== 100 ? "Disponible une fois la progression à 100%" : "Soumettre votre partie pour validation"}"
           >
             <i class="fa-solid fa-flag-checkered text-xs"></i>
-            Marquer comme terminée
+            Marquer ma partie comme terminée
           </button>
         ` : ""}
 
@@ -311,14 +307,10 @@ function renderTacheCard(tache) {
 }
 
 function renderPhotoUploadForm(tacheId) {
-    const id = escapeHtml(tacheId);
-    return `
+  const id = escapeHtml(tacheId);
+  return `
     <div class="rounded-2xl border border-bordure bg-fond p-4">
-      <label
-        for="photoInput-${id}"
-        class="photo-dropzone group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-bordure bg-carte px-4 py-6 text-center transition hover:border-primary hover:bg-primary/5"
-        data-tache-id="${id}"
-      >
+      <label for="photoInput-${id}" class="photo-dropzone group flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-bordure bg-carte px-4 py-6 text-center transition hover:border-primary hover:bg-primary/5" data-tache-id="${id}">
         <div id="photoPreviewWrap-${id}" class="hidden">
           <img id="photoPreview-${id}" class="mx-auto h-28 w-28 rounded-xl object-cover shadow-card" />
           <p id="photoFileName-${id}" class="mt-2 max-w-[200px] truncate text-[11px] text-muted"></p>
@@ -332,26 +324,13 @@ function renderPhotoUploadForm(tacheId) {
         </div>
       </label>
 
-      <input
-        type="file"
-        accept="image/*"
-        id="photoInput-${id}"
-        class="photo-file-input hidden"
-        data-tache-id="${id}"
-      />
+      <input type="file" accept="image/*" id="photoInput-${id}" class="photo-file-input hidden" data-tache-id="${id}" />
 
       <div class="mt-3 flex items-center justify-end gap-2">
-        <button
-          class="btn-cancel-photo rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-muted transition hover:bg-fond"
-          data-tache-id="${id}"
-        >
+        <button class="btn-cancel-photo rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-muted transition hover:bg-fond" data-tache-id="${id}">
           Annuler
         </button>
-        <button
-          class="btn-save-photo flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
-          data-tache-id="${id}"
-          disabled
-        >
+        <button class="btn-save-photo flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-soft transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40" data-tache-id="${id}" disabled>
           <i class="fa-solid fa-upload text-xs"></i>
           Envoyer
         </button>
@@ -362,257 +341,277 @@ function renderPhotoUploadForm(tacheId) {
 
 // ─── Événements ───────────────────────────────────────────────────────────────
 function bindEvents() {
-    // Filtres
-    document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            currentFilter = btn.dataset.filter;
-            renderPage();
-        });
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentFilter = btn.dataset.filter;
+      renderPage();
     });
+  });
 
-    // Slider progression — mise à jour affichage en temps réel
-    document.querySelectorAll(".progression-slider").forEach(slider => {
-        slider.addEventListener("input", () => {
-            const valueEl = document.getElementById(`sliderValue-${slider.dataset.tacheId}`);
-            if (valueEl) valueEl.textContent = `${slider.value}%`;
+  document.querySelectorAll(".progression-slider").forEach(slider => {
+    slider.addEventListener("input", () => {
+      const valueEl = document.getElementById(`sliderValue-${slider.dataset.tacheId}`);
+      if (valueEl) valueEl.textContent = `${slider.value}%`;
 
-            // Active/désactive le bouton "Marquer comme terminée" en direct
-            const card = slider.closest("[data-tache-id]");
-            const btnTerminer = card?.querySelector(".btn-terminer");
-            if (btnTerminer) {
-                const complet = Number(slider.value) === 100;
-                btnTerminer.disabled = !complet;
-                btnTerminer.classList.toggle("bg-succes", complet);
-                btnTerminer.classList.toggle("hover:bg-succes/80", complet);
-                btnTerminer.classList.toggle("bg-muted/30", !complet);
-                btnTerminer.classList.toggle("cursor-not-allowed", !complet);
-            }
-        });
+      const card = slider.closest("[data-tache-id]");
+      const btnTerminer = card?.querySelector(".btn-terminer");
+      if (btnTerminer) {
+        const complet = Number(slider.value) === 100;
+        btnTerminer.disabled = !complet;
+        btnTerminer.classList.toggle("bg-succes", complet);
+        btnTerminer.classList.toggle("hover:bg-succes/80", complet);
+        btnTerminer.classList.toggle("bg-muted/30", !complet);
+        btnTerminer.classList.toggle("cursor-not-allowed", !complet);
+      }
     });
+  });
 
-    // Démarrer la tâche
-    document.querySelectorAll(".btn-commencer").forEach(btn => {
-        btn.addEventListener("click", () => handleCommencer(btn.dataset.tacheId, btn.dataset.affectationId, btn));
+  document.querySelectorAll(".btn-commencer").forEach(btn => {
+    btn.addEventListener("click", () => handleCommencer(btn.dataset.tacheId, btn.dataset.affectationId, btn));
+  });
+
+  document.querySelectorAll(".btn-save-progression").forEach(btn => {
+    btn.addEventListener("click", () => handleEnregistrerProgression(btn.dataset.tacheId, btn.dataset.affectationId, btn));
+  });
+
+  document.querySelectorAll(".btn-terminer").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      handleTerminer(btn.dataset.tacheId, btn.dataset.affectationId, btn);
     });
+  });
 
-    // Enregistrer la progression (sans changer le statut, sauf si "Renvoyer" → repasse "En cours")
-    document.querySelectorAll(".btn-save-progression").forEach(btn => {
-        btn.addEventListener("click", () => handleEnregistrerProgression(btn.dataset.tacheId, btn));
+  document.querySelectorAll(".btn-toggle-photo").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.tacheId;
+      openPhotoForm = openPhotoForm === id ? null : id;
+      renderPage();
     });
+  });
 
-    // Marquer comme terminée (soumission pour validation)
-    document.querySelectorAll(".btn-terminer").forEach(btn => {
-        btn.addEventListener("click", () => {
-            if (btn.disabled) return;
-            handleTerminer(btn.dataset.tacheId, btn.dataset.affectationId, btn);
-        });
+  document.querySelectorAll(".btn-cancel-photo").forEach(btn => {
+    btn.addEventListener("click", () => {
+      openPhotoForm = null;
+      renderPage();
     });
+  });
 
-    // Toggle formulaire photo
-    document.querySelectorAll(".btn-toggle-photo").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const id = btn.dataset.tacheId;
-            openPhotoForm = openPhotoForm === id ? null : id;
-            renderPage();
-        });
+  document.querySelectorAll(".photo-file-input").forEach(input => {
+    input.addEventListener("change", () => {
+      if (input.files?.[0]) afficherApercuPhoto(input.dataset.tacheId, input.files[0]);
     });
+  });
 
-    // Annuler l'ajout de photo
-    document.querySelectorAll(".btn-cancel-photo").forEach(btn => {
-        btn.addEventListener("click", () => {
-            openPhotoForm = null;
-            renderPage();
-        });
+  document.querySelectorAll(".photo-dropzone").forEach(zone => {
+    const tacheId = zone.dataset.tacheId;
+    const input = document.getElementById(`photoInput-${tacheId}`);
+
+    zone.addEventListener("dragover", e => {
+      e.preventDefault();
+      zone.classList.add("border-primary", "bg-primary/5");
     });
-
-    // Sélection de fichier (clic classique)
-    document.querySelectorAll(".photo-file-input").forEach(input => {
-        input.addEventListener("change", () => {
-            if (input.files?.[0]) afficherApercuPhoto(input.dataset.tacheId, input.files[0]);
-        });
+    zone.addEventListener("dragleave", () => {
+      zone.classList.remove("border-primary", "bg-primary/5");
     });
-
-    // Drag & drop sur la zone
-    document.querySelectorAll(".photo-dropzone").forEach(zone => {
-        const tacheId = zone.dataset.tacheId;
-        const input = document.getElementById(`photoInput-${tacheId}`);
-
-        zone.addEventListener("dragover", e => {
-            e.preventDefault();
-            zone.classList.add("border-primary", "bg-primary/5");
-        });
-        zone.addEventListener("dragleave", () => {
-            zone.classList.remove("border-primary", "bg-primary/5");
-        });
-        zone.addEventListener("drop", e => {
-            e.preventDefault();
-            zone.classList.remove("border-primary", "bg-primary/5");
-            const file = e.dataTransfer.files?.[0];
-            if (file && input) {
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                input.files = dt.files;
-                afficherApercuPhoto(tacheId, file);
-            }
-        });
+    zone.addEventListener("drop", e => {
+      e.preventDefault();
+      zone.classList.remove("border-primary", "bg-primary/5");
+      const file = e.dataTransfer.files?.[0];
+      if (file && input) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        afficherApercuPhoto(tacheId, file);
+      }
     });
+  });
 
-    // Enregistrer une photo
-    document.querySelectorAll(".btn-save-photo").forEach(btn => {
-        btn.addEventListener("click", () => handleAjouterPhoto(btn.dataset.tacheId, btn));
-    });
+  document.querySelectorAll(".btn-save-photo").forEach(btn => {
+    btn.addEventListener("click", () => handleAjouterPhoto(btn.dataset.tacheId, btn));
+  });
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
-async function handleCommencer(tacheId, affectationId, btn) {
-    const tache = allTaches.find(t => t.id === tacheId);
-    if (!tache) return;
 
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Démarrage...`;
+// Recalcule le statut global de la tâche à partir de TOUTES les affectations
+// (tous les ouvriers, pas seulement celui connecté), et le synchronise.
+async function recalculerEtSynchroniserTache(tacheId) {
+  const tache = allTaches.find(t => t.id === tacheId);
+  if (!tache) return tache;
 
-    try {
-        await updateTache(tacheId, { ...tache, statutTache: "En cours" });
-        if (affectationId) await updateStatutAffectation(affectationId, "En cours");
+  const affectations = await getAffectationsByTache(tacheId);
+  const nouveauStatut = calculerStatutGlobalTache(affectations) ?? tache.statutTache;
 
-        const idx = allTaches.findIndex(t => t.id === tacheId);
-        allTaches[idx] = { ...allTaches[idx], statutTache: "En cours" };
-
-        showToast("Tâche démarrée.");
-        renderPage();
-    } catch (err) {
-        showToast(err.message, "error");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i> Démarrer la tâche`;
-    }
+  if (nouveauStatut !== tache.statutTache) {
+    await updateTache(tacheId, { ...tache, statutTache: nouveauStatut });
+  }
+  return { ...tache, statutTache: nouveauStatut };
 }
 
-async function handleEnregistrerProgression(tacheId, btn) {
-    const tache = allTaches.find(t => t.id === tacheId);
-    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
-    const slider = card?.querySelector(".progression-slider");
-    if (!tache || !slider) return;
+async function handleCommencer(tacheId, affectationId, btn) {
+  if (!affectationId) return;
 
-    const progression = Number(slider.value);
-    // Si la tâche avait été renvoyée, le fait de retravailler dessus la repasse "En cours"
-    const statutTache = tache.statutTache === "Renvoyer" ? "En cours" : tache.statutTache;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Démarrage...`;
 
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Enregistrement...`;
+  try {
+    await updateStatutAffectation(affectationId, "En cours");
+    const tacheMaj = await recalculerEtSynchroniserTache(tacheId);
 
-    try {
-        await updateTache(tacheId, { ...tache, progression, statutTache });
+    const idxT = allTaches.findIndex(t => t.id === tacheId);
+    if (idxT !== -1) allTaches[idxT] = tacheMaj;
 
-        const idx = allTaches.findIndex(t => t.id === tacheId);
-        allTaches[idx] = { ...allTaches[idx], progression, statutTache };
+    const idxA = allAffectations.findIndex(a => a.id === affectationId);
+    if (idxA !== -1) allAffectations[idxA] = { ...allAffectations[idxA], statutPersonnel: "En cours" };
 
-        showToast("Progression enregistrée.");
-        renderPage();
-    } catch (err) {
-        showToast(err.message, "error");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-floppy-disk text-xs"></i> Enregistrer la progression`;
+    showToast("Tâche démarrée.");
+    renderPage();
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i> Démarrer la tâche`;
+  }
+}
+
+async function handleEnregistrerProgression(tacheId, affectationId, btn) {
+  const tache = allTaches.find(t => t.id === tacheId);
+  const card  = document.querySelector(`[data-tache-id="${tacheId}"]`);
+  const slider = card?.querySelector(".progression-slider");
+  if (!tache || !slider) return;
+
+  const progression = Number(slider.value);
+  const affectation = allAffectations.find(a => a.id === affectationId);
+
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Enregistrement...`;
+
+  try {
+    // Si l'ouvrier avait été renvoyé, le fait de retravailler dessus repasse SA contribution "En cours"
+    if (affectation?.statutPersonnel === "Renvoyer") {
+      await updateStatutAffectation(affectationId, "En cours");
+      const idxA = allAffectations.findIndex(a => a.id === affectationId);
+      if (idxA !== -1) allAffectations[idxA] = { ...allAffectations[idxA], statutPersonnel: "En cours" };
     }
+
+    await updateTache(tacheId, { ...tache, progression });
+    const tacheMaj = await recalculerEtSynchroniserTache(tacheId);
+
+    const idxT = allTaches.findIndex(t => t.id === tacheId);
+    if (idxT !== -1) allTaches[idxT] = { ...tacheMaj, progression };
+
+    showToast("Progression enregistrée.");
+    renderPage();
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-floppy-disk text-xs"></i> Enregistrer la progression`;
+  }
 }
 
 async function handleTerminer(tacheId, affectationId, btn) {
-    const tache = allTaches.find(t => t.id === tacheId);
-    if (!tache) return;
+  if (!affectationId) return;
 
-    const confirme = window.confirm(
-        "Soumettre cette tâche pour validation ? Vous ne pourrez plus la modifier tant que le chef de chantier ne l'aura pas traitée."
-    );
-    if (!confirme) return;
+  const confirme = window.confirm(
+    "Marquer votre partie comme terminée ? Elle attendra la validation du chef de chantier."
+  );
+  if (!confirme) return;
 
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
+  const tache = allTaches.find(t => t.id === tacheId);
+  if (!tache) return;
 
-    try {
-        await updateTache(tacheId, { ...tache, progression: 100, statutTache: "En attente" });
-        if (affectationId) await updateStatutAffectation(affectationId, "En cours");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
 
-        const idx = allTaches.findIndex(t => t.id === tacheId);
-        allTaches[idx] = { ...allTaches[idx], progression: 100, statutTache: "En attente" };
+  try {
+    await updateStatutAffectation(affectationId, "En attente");
+    await updateTache(tacheId, { ...tache, progression: 100 });
+    const tacheMaj = await recalculerEtSynchroniserTache(tacheId);
 
-        showToast("Tâche soumise, en attente de validation.");
-        renderPage();
-    } catch (err) {
-        showToast(err.message, "error");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xs"></i> Marquer comme terminée`;
-    }
-}
+    const idxT = allTaches.findIndex(t => t.id === tacheId);
+    if (idxT !== -1) allTaches[idxT] = { ...tacheMaj, progression: 100 };
 
-async function handleAjouterPhoto(tacheId, btn) {
-    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
-    const input = card?.querySelector(".photo-file-input");
-    if (!input) return;
+    const idxA = allAffectations.findIndex(a => a.id === affectationId);
+    if (idxA !== -1) allAffectations[idxA] = { ...allAffectations[idxA], statutPersonnel: "En attente" };
 
-    const file = input.files?.[0];
-    if (!file) {
-        showToast("Veuillez sélectionner une image.", "error");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
-
-    try {
-        const url = await uploadImageCloudinary(file);
-        await createPhoto({ tacheId, url });
-
-        photosByTache[tacheId] = await getPhotosByTache(tacheId);
-        openPhotoForm = null;
-
-        showToast("Photo ajoutée.");
-        renderPage();
-    } catch (err) {
-        showToast(err.message, "error");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-upload text-xs"></i> Envoyer`;
-    }
+    showToast("Votre partie a été soumise, en attente de validation.");
+    renderPage();
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xs"></i> Marquer ma partie comme terminée`;
+  }
 }
 
 function afficherApercuPhoto(tacheId, file) {
-    const previewWrap = document.getElementById(`photoPreviewWrap-${tacheId}`);
-    const preview = document.getElementById(`photoPreview-${tacheId}`);
-    const fileName = document.getElementById(`photoFileName-${tacheId}`);
-    const placeholder = document.getElementById(`photoPlaceholder-${tacheId}`);
-    const card = document.querySelector(`[data-tache-id="${tacheId}"]`);
-    const btnSave = card?.querySelector(".btn-save-photo");
+  const previewWrap  = document.getElementById(`photoPreviewWrap-${tacheId}`);
+  const preview      = document.getElementById(`photoPreview-${tacheId}`);
+  const fileName     = document.getElementById(`photoFileName-${tacheId}`);
+  const placeholder  = document.getElementById(`photoPlaceholder-${tacheId}`);
+  const card         = document.querySelector(`[data-tache-id="${tacheId}"]`);
+  const btnSave      = card?.querySelector(".btn-save-photo");
 
-    if (!previewWrap || !preview) return;
+  if (!previewWrap || !preview) return;
 
-    preview.src = URL.createObjectURL(file);
-    if (fileName) fileName.textContent = file.name;
-    previewWrap.classList.remove("hidden");
-    placeholder?.classList.add("hidden");
+  preview.src = URL.createObjectURL(file);
+  if (fileName) fileName.textContent = file.name;
+  previewWrap.classList.remove("hidden");
+  placeholder?.classList.add("hidden");
 
-    if (btnSave) btnSave.disabled = false;
+  if (btnSave) btnSave.disabled = false;
+}
+
+async function handleAjouterPhoto(tacheId, btn) {
+  const card  = document.querySelector(`[data-tache-id="${tacheId}"]`);
+  const input = card?.querySelector(".photo-file-input");
+  if (!input) return;
+
+  const file = input.files?.[0];
+  if (!file) {
+    showToast("Veuillez sélectionner une image.", "error");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-xs"></i> Envoi...`;
+
+  try {
+    const url = await uploadImageCloudinary(file);
+    await createPhoto({ tacheId, url });
+
+    photosByTache[tacheId] = await getPhotosByTache(tacheId);
+    openPhotoForm = null;
+
+    showToast("Photo ajoutée.");
+    renderPage();
+  } catch (err) {
+    showToast(err.message, "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-upload text-xs"></i> Envoyer`;
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getStatutBadge(statut) {
-    const MAP = {
-        "A faire": "bg-attente/10 text-attente",
-        "En cours": "bg-secondary/10 text-secondary",
-        "En attente": "bg-attente/10 text-attente",
-        "Valider": "bg-succes/10 text-succes",
-        "Renvoyer": "bg-bloque/10 text-bloque",
-        "Terminer": "bg-succes/10 text-succes",
-    };
-    const cls = MAP[statut] ?? "bg-muted/10 text-muted";
-    return `<span class="rounded-full px-2.5 py-1 text-xs font-bold ${cls}">${escapeHtml(statut ?? "—")}</span>`;
+  const MAP = {
+    "A faire":   "bg-attente/10 text-attente",
+    "En cours":  "bg-secondary/10 text-secondary",
+    "En attente":"bg-attente/10 text-attente",
+    "Valider":   "bg-succes/10 text-succes",
+    "Renvoyer":  "bg-bloque/10 text-bloque",
+    "Terminer":  "bg-succes/10 text-succes",
+  };
+  const cls = MAP[statut] ?? "bg-muted/10 text-muted";
+  return `<span class="rounded-full px-2.5 py-1 text-xs font-bold ${cls}">${escapeHtml(statut ?? "—")}</span>`;
 }
 
 function getProgressionColor(pct) {
-    if (pct === 100) return "bg-succes";
-    if (pct >= 60) return "bg-secondary";
-    if (pct >= 30) return "bg-attente";
-    return "bg-bloque";
+  if (pct === 100) return "bg-succes";
+  if (pct >= 60)   return "bg-secondary";
+  if (pct >= 30)   return "bg-attente";
+  return "bg-bloque";
 }
 
 function formatDate(date) {
-    if (!date) return "—";
-    return new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
