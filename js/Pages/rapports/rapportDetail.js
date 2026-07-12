@@ -1,7 +1,7 @@
 import { escapeHtml } from "../../Utils/html.js";
 import { showToast } from "../../Components/toast.js";
 import { openConfirm } from "../../Components/modal.js";
-import { isAdmin, isClient, getSession, canManage } from "../../Utils/auth.js";
+import { isAdmin, isClient, isChef, isOuvrier, getSession } from "../../Utils/auth.js";
 import {
     publierRapport,
     supprimerPhotoRapport,
@@ -14,11 +14,15 @@ import { openRapportForm } from "./rapportForm.js";
 export function renderRapportDetail(rapport, auteur, projet, projets, onBack, onSuccess) {
     const app = document.getElementById("app");
 
-    function render() {
-        const peutModifier = canManage() && !isClient();
+function render() {
+        const session = getSession();
+        // Seuls le chef et les ouvriers peuvent créer/modifier/publier — jamais l'admin ni le client
+        const peutModifier = isChef() || isOuvrier();
         const peutPublier = peutModifier && rapport.statutRapport === "Brouillon";
+        // Seul l'admin peut supprimer (soft delete)
         const peutSupprimer = isAdmin();
-        const peutAjouterPhoto = peutModifier;
+        // Seul l'auteur du rapport peut ajouter (ou retirer) une photo
+        const peutAjouterPhoto = session?.id === rapport.auteurId;
 
         app.innerHTML = `
       <div class="space-y-5">
@@ -97,7 +101,7 @@ export function renderRapportDetail(rapport, auteur, projet, projets, onBack, on
                       <a href="${escapeHtml(url)}" target="_blank" rel="noopener">
                         <img src="${escapeHtml(url)}" alt="Photo rapport" class="h-full w-full object-cover transition group-hover:scale-105" />
                       </a>
-                      ${peutModifier ? `
+                      ${peutAjouterPhoto ? `
                         <button
                           class="btn-remove-photo-rapport absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-bloque text-white text-[10px] opacity-0 transition group-hover:opacity-100"
                           data-url="${escapeHtml(url)}"
