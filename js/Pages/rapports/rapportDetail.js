@@ -10,6 +10,7 @@ import { uploadImageCloudinary } from "../../Services/cloudinaryService.js";
 import { ajouterPhotoRapport } from "../../Services/rapportService.js";
 import { getStatutBadge, formatDate, getInitials } from "./rapportsHelpers.js";
 import { openRapportForm } from "./rapportForm.js";
+import { openSignalementForm } from "../signalements/signalementForm.js";
 
 export function renderRapportDetail(rapport, auteur, projet, projets, onBack, onSuccess) {
     const app = document.getElementById("app");
@@ -19,10 +20,9 @@ function render() {
         // Seuls le chef et les ouvriers peuvent créer/modifier/publier — jamais l'admin ni le client
         const peutModifier = isChef() || isOuvrier();
         const peutPublier = peutModifier && rapport.statutRapport === "Brouillon";
-        // Seul l'admin peut supprimer (soft delete)
         const peutSupprimer = isAdmin();
-        // Seul l'auteur du rapport peut ajouter (ou retirer) une photo
         const peutAjouterPhoto = session?.id === rapport.auteurId;
+        const peutSignaler = !isAdmin() && session?.id !== rapport.auteurId;
 
         app.innerHTML = `
       <div class="space-y-5">
@@ -51,6 +51,11 @@ function render() {
             ${peutSupprimer ? `
               <button id="btnSupprimerRapport" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2.5 text-sm font-bold text-muted shadow-card transition hover:bg-bloque/10 hover:text-bloque">
                 <i class="fa-solid fa-trash text-xs"></i> Supprimer
+              </button>
+            ` : ""}
+            ${peutSignaler ? `
+              <button id="btnSignalerRapport" class="flex items-center gap-2 rounded-xl border border-bloque/30 bg-bloque/5 px-4 py-2.5 text-sm font-bold text-bloque shadow-card transition hover:bg-bloque/10">
+                <i class="fa-solid fa-triangle-exclamation text-xs"></i> Signaler
               </button>
             ` : ""}
           </div>
@@ -166,6 +171,15 @@ function render() {
                         showToast(err.message, "error");
                     }
                 },
+            });
+        });
+
+        document.getElementById("btnSignalerRapport")?.addEventListener("click", () => {
+            openSignalementForm([], () => {}, {
+                cibleType: "Rapport",
+                cibleLabel: rapport.contenu.slice(0, 60) + (rapport.contenu.length > 60 ? "..." : ""),
+                projetId: rapport.projetId,
+                rapportId: rapport.id,
             });
         });
 

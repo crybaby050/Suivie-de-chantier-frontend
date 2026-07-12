@@ -11,6 +11,7 @@ import { openPhaseForm } from "./phaseForm.js";
 import { openTacheForm } from "./tacheForm.js";
 import { openTacheDetail } from "./tacheDetail.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
+import { openSignalementForm } from "../signalements/signalementForm.js";
 
 export async function renderProjetDetail(projetId) {
     const app = document.getElementById("app");
@@ -212,6 +213,25 @@ export async function renderProjetDetail(projetId) {
             });
         });
 
+        document.getElementById("btnSignalerProjet")?.addEventListener("click", () => {
+            openSignalementForm([], () => {}, {
+                cibleType: "Projet",
+                cibleLabel: projet.nom,
+                projetId: projet.id,
+            });
+        });
+
+        document.querySelectorAll(".btn-signaler-phase").forEach(btn => {
+            btn.addEventListener("click", () => {
+                openSignalementForm([], () => {}, {
+                    cibleType: "Phase",
+                    cibleLabel: btn.dataset.phaseLibelle,
+                    projetId: btn.dataset.projetId,
+                    phaseId: btn.dataset.phaseId,
+                });
+            });
+        });
+
         document.getElementById("btnDemarrerProjet")?.addEventListener("click", async () => {
             try {
                 await updateProjet(projet.id, { ...projet, statutProjet: "En cours" });
@@ -264,7 +284,7 @@ export async function renderProjetDetail(projetId) {
                 const taches = tachesByPhaseId[phaseId] ?? [];
                 const tache = taches.find(t => t.id === tacheId);
                 const affectations = affectationsByTacheId[tacheId] ?? [];
-                openTacheDetail(tache, affectations, phaseId, reload);
+                openTacheDetail(tache, affectations, phaseId, projetId, reload);
             });
         });
 
@@ -331,17 +351,24 @@ function renderOverviewTab(projet, chef, client, membres) {
             </div>
           </div>
           ${canManage() ? `
-  <div class="mt-4 flex gap-2">
-    ${isAdmin() ? `
-      <button id="btnModifier" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
-        <i class="fa-solid fa-pen text-xs"></i> Modifier
-      </button>
-    ` : ""}
-    <button id="btnArchiverProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
-      <i class="fa-solid fa-box-archive text-xs"></i> Archiver
-    </button>
-  </div>
-` : ""}
+            <div class="mt-4 flex flex-wrap gap-2">
+              ${isAdmin() ? `
+                <button id="btnModifier" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-secondary">
+                  <i class="fa-solid fa-pen text-xs"></i> Modifier
+                </button>
+              ` : ""}
+              <button id="btnArchiverProjet" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-sm font-bold text-muted transition hover:bg-fond">
+                <i class="fa-solid fa-box-archive text-xs"></i> Archiver
+              </button>
+            </div>
+          ` : ""}
+          ${!isAdmin() ? `
+            <div class="mt-2 flex">
+              <button id="btnSignalerProjet" class="flex items-center gap-2 rounded-xl border border-bloque/30 bg-bloque/5 px-4 py-2 text-sm font-bold text-bloque transition hover:bg-bloque/10">
+                <i class="fa-solid fa-triangle-exclamation text-xs"></i> Signaler ce projet
+              </button>
+            </div>
+          ` : ""}
         </div>
 
         ${projet.description ? `
@@ -502,16 +529,25 @@ function renderPhaseCard(phase, taches, affectationsByTacheId) {
           </div>
         </div>
 
-        ${canManage() ? `
-          <div class="flex flex-shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+        <div class="flex flex-shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+          ${canManage() ? `
             <button class="btn-edit-phase flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-secondary" data-phase-id="${escapeHtml(phase.id)}">
               <i class="fa-solid fa-pen text-xs"></i> Modifier
             </button>
             <button class="btn-delete-phase flex items-center gap-1.5 rounded-xl border border-bordure bg-carte px-3 py-1.5 text-xs font-bold text-muted transition hover:bg-bloque/10 hover:text-bloque" data-phase-id="${escapeHtml(phase.id)}">
               <i class="fa-solid fa-box-archive text-xs"></i> Archive
             </button>
-          </div>
-        ` : ""}
+          ` : ""}
+          ${!isAdmin() ? `
+            <button class="btn-signaler-phase flex items-center gap-1.5 rounded-xl border border-bloque/30 bg-bloque/5 px-3 py-1.5 text-xs font-bold text-bloque transition hover:bg-bloque/10"
+              data-phase-id="${escapeHtml(phase.id)}"
+              data-phase-libelle="${escapeHtml(phase.libelle)}"
+              data-projet-id="${escapeHtml(phase.projetId)}"
+            >
+              <i class="fa-solid fa-triangle-exclamation text-xs"></i> Signaler
+            </button>
+          ` : ""}
+        </div>
       </div>
 
       <!-- Tâches de la phase -->
