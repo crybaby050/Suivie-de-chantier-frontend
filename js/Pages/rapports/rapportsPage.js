@@ -159,16 +159,8 @@ function renderPage() {
       <p class="text-xs text-muted">${filtered.length} rapport(s) affiché(s)</p>
 
       <!-- Liste -->
-      <div class="space-y-3">
-        ${filtered.length === 0
-            ? `
-            <div class="rounded-2xl border border-dashed border-bordure bg-carte py-16 text-center">
-              <i class="fa-solid fa-file-lines text-3xl text-muted/30"></i>
-              <p class="mt-3 text-sm font-semibold text-muted">Aucun rapport trouvé.</p>
-            </div>
-          `
-            : filtered.map(r => renderRapportCard(r)).join("")
-        }
+      <div>
+        ${renderRapportsListe(filtered)}
       </div>
 
     </div>
