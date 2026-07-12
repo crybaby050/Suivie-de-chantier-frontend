@@ -52,36 +52,36 @@ export async function createProjet(data) {
 }
 
 export async function updateProjet(id, data) {
-  required(data.nom, "Le nom du projet est obligatoire.");
-  required(data.chefId, "Le chef de chantier est obligatoire.");
+    required(data.nom, "Le nom du projet est obligatoire.");
+    required(data.chefId, "Le chef de chantier est obligatoire.");
 
-  // Récupérer l'ancien projet pour comparer le chef
-  const ancienProjet = await apiRequest(
-    `${ENDPOINTS.projets}/${id}`,
-    {},
-    "Impossible de charger le projet."
-  );
+    // Récupérer l'ancien projet pour comparer le chef
+    const ancienProjet = await apiRequest(
+        `${ENDPOINTS.projets}/${id}`,
+        {},
+        "Impossible de charger le projet."
+    );
 
-  const result = await apiRequest(
-    `${ENDPOINTS.projets}/${id}`,
-    { method: "PATCH", body: JSON.stringify(normalizeProjet({ id, ...data })) },
-    "Impossible de modifier le projet."
-  );
+    const result = await apiRequest(
+        `${ENDPOINTS.projets}/${id}`,
+        { method: "PATCH", body: JSON.stringify(normalizeProjet({ id, ...data })) },
+        "Impossible de modifier le projet."
+    );
 
-  // Chef changé : libérer l'ancien, occuper le nouveau
-  if (ancienProjet.chefId && ancienProjet.chefId !== data.chefId) {
-    await updateDisponibilite(ancienProjet.chefId, "Disponible");
-    await updateDisponibilite(data.chefId, "Occuper");
-  }
+    // Chef changé : libérer l'ancien, occuper le nouveau
+    if (ancienProjet.chefId && ancienProjet.chefId !== data.chefId) {
+        await updateDisponibilite(ancienProjet.chefId, "Disponible");
+        await updateDisponibilite(data.chefId, "Occuper");
+    }
 
-  // Projet terminé ou suspendu : libérer tout le monde
-  if (["Terminer", "Suspendu"].includes(data.statutProjet)) {
-    await libererMembres(id);
-    // Libérer aussi le chef
-    await updateDisponibilite(data.chefId, "Disponible");
-  }
+    // Projet terminé ou suspendu : libérer tout le monde
+    if (["Terminer", "Suspendu"].includes(data.statutProjet)) {
+        await libererMembres(id);
+        // Libérer aussi le chef
+        await updateDisponibilite(data.chefId, "Disponible");
+    }
 
-  return result;
+    return result;
 }
 
 export async function deleteProjet(id) {
@@ -105,5 +105,34 @@ async function libererMembres(projetId) {
 
     await Promise.all(
         membres.map((m) => updateDisponibilite(m.utilisateurId, "Disponible"))
+    );
+}
+
+/**
+ * S'assure que le chef de chantier désigné du projet figure bien
+ * dans projetMembres (ne fait rien s'il y est déjà).
+ */
+async function assurerChefDansMembres(projetId, chefId) {
+    if (!chefId) return;
+
+    const membres = await apiRequest(
+        `${ENDPOINTS.projetMembres}?projetId=${projetId}&utilisateurId=${chefId}`,
+        {},
+        "Impossible de vérifier les membres du projet."
+    );
+
+    if (membres.length > 0) return; // déjà membre
+
+    const membre = {
+        id: createId("pm"),
+        projetId,
+        utilisateurId: chefId,
+        dateAjout: new Date().toISOString(),
+    };
+
+    await apiRequest(
+        ENDPOINTS.projetMembres,
+        { method: "POST", body: JSON.stringify(membre) },
+        "Impossible d'ajouter le chef aux membres du projet."
     );
 }
