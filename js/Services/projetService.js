@@ -30,25 +30,24 @@ export async function getProjet(id) {
 }
 
 export async function createProjet(data) {
-    required(data.nom, "Le nom du projet est obligatoire.");
-    required(data.dateDeDebut, "La date de début est obligatoire.");
-    required(data.chefId, "Le chef de chantier est obligatoire.");
+required(data.nom, "Le nom du projet est obligatoire.");
+required(data.dateDeDebut, "La date de début est obligatoire.");
+required(data.chefId, "Le chef de chantier est obligatoire.");
 
-    const projet = normalizeProjet({
-        id: createId("projet"),
-        ...data,
+const projet = normalizeProjet({
+id: createId("projet"),
+...data,
     });
 
-    const result = await apiRequest(
-        ENDPOINTS.projets,
+const result = await apiRequest(
+ENDPOINTS.projets,
         { method: "POST", body: JSON.stringify(projet) },
-        "Impossible de créer le projet."
+"Impossible de créer le projet."
     );
 
-    // Marquer le chef comme occupé
-    await updateDisponibilite(data.chefId, "Occuper");
+await assurerChefDansMembres(projet.id, projet.chefId);
 
-    return result;
+return result;
 }
 
 export async function updateProjet(id, data) {
