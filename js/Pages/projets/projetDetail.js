@@ -12,6 +12,12 @@ import { openTacheForm } from "./tacheForm.js";
 import { openTacheDetail } from "./tacheDetail.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 import { openSignalementForm } from "../signalements/signalementForm.js";
+import { paginerListe, renderPagination } from "../../Utils/pagination.js";
+
+let currentPagePhases = 1;
+const PHASES_PAR_PAGE = 10;
+let currentPageTachesParPhase = {}; // { [phaseId]: page }
+const TACHES_PAR_PAGE = 10;
 
 export async function renderProjetDetail(projetId) {
     const app = document.getElementById("app");
@@ -463,6 +469,9 @@ function renderArchivesBody(projets) {
 function renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheId) {
     const FILTERS = ["Tout", "En cours", "Terminer", "Ordre"];
 
+    const { items: phasesPaginees, page: pagePhases, totalPages: totalPagesPhases } = paginerListe(phases, currentPagePhases, PHASES_PAR_PAGE);
+    currentPagePhases = pagePhases;
+
     return `
     <div class="space-y-4">
 
@@ -489,13 +498,15 @@ function renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheI
               <p class="mt-3 text-sm font-semibold text-muted">Aucune phase créée.</p>
             </div>
           `
-            : phases.map(phase => renderPhaseCard(
+            : phasesPaginees.map(phase => renderPhaseCard(
                 phase,
                 tachesByPhaseId[phase.id] ?? [],
                 affectationsByTacheId
             )).join("")
         }
       </div>
+
+      ${renderPagination(pagePhases, totalPagesPhases, "phases")}
     </div>
   `;
 }
@@ -562,11 +573,7 @@ function renderPhaseCard(phase, taches, affectationsByTacheId) {
         </div>
         ${taches.length === 0
             ? `<p class="text-xs italic text-muted">Aucune tâche pour cette phase.</p>`
-            : `
-            <div class="space-y-2">
-              ${taches.map(t => renderTacheRow(t, affectationsByTacheId[t.id] ?? [], phase.id)).join("")}
-            </div>
-          `}
+            : renderTachesDeLaPhase(taches, affectationsByTacheId, phase.id)}
       </div>
     </div>
   `;
