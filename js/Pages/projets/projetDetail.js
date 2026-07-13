@@ -15,9 +15,9 @@ import { openSignalementForm } from "../signalements/signalementForm.js";
 import { paginerListe, renderPagination } from "../../Utils/pagination.js";
 
 let currentPagePhases = 1;
-const PHASES_PAR_PAGE = 10;
+const PHASES_PAR_PAGE = 5;
 let currentPageTachesParPhase = {}; // { [phaseId]: page }
-const TACHES_PAR_PAGE = 10;
+const TACHES_PAR_PAGE = 3;
 
 export async function renderProjetDetail(projetId) {
     const app = document.getElementById("app");
@@ -317,6 +317,26 @@ export async function renderProjetDetail(projetId) {
                 btn.classList.remove("bg-carte", "text-muted", "border", "border-bordure");
             });
         });
+
+        // Pagination des phases
+        document.querySelectorAll('.pagination-btn[data-target="phases"]').forEach(btn => {
+            btn.addEventListener("click", () => {
+                currentPagePhases = Number(btn.dataset.page);
+                renderDetail();
+            });
+        });
+
+        // Pagination des tâches (une par phase)
+        document.querySelectorAll(".pagination-btn").forEach(btn => {
+            const target = btn.dataset.target;
+            if (target?.startsWith("taches-")) {
+                btn.addEventListener("click", () => {
+                    const phaseId = target.replace("taches-", "");
+                    currentPageTachesParPhase[phaseId] = Number(btn.dataset.page);
+                    renderDetail();
+                });
+            }
+        });
     }
 
     renderDetail();
@@ -577,6 +597,19 @@ function renderPhaseCard(phase, taches, affectationsByTacheId) {
       </div>
     </div>
   `;
+}
+
+function renderTachesDeLaPhase(taches, affectationsByTacheId, phaseId) {
+    const pageActuelle = currentPageTachesParPhase[phaseId] ?? 1;
+    const { items: tachesPaginees, page, totalPages } = paginerListe(taches, pageActuelle, TACHES_PAR_PAGE);
+    currentPageTachesParPhase[phaseId] = page;
+
+    return `
+      <div class="space-y-2">
+        ${tachesPaginees.map(t => renderTacheRow(t, affectationsByTacheId[t.id] ?? [], phaseId)).join("")}
+      </div>
+      ${renderPagination(page, totalPages, `taches-${phaseId}`)}
+    `;
 }
 
 function renderTacheRow(tache, affectations, phaseId) {

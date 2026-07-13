@@ -5,7 +5,7 @@
  * @param {number} parPage
  * @returns { items, page, totalPages, total }
  */
-export function paginerListe(liste, page, parPage = 10) {
+export function paginerListe(liste, page, parPage = 5) {
   const totalPages = Math.max(1, Math.ceil(liste.length / parPage));
   const pageActuelle = Math.min(Math.max(1, page), totalPages);
   const debut = (pageActuelle - 1) * parPage;
