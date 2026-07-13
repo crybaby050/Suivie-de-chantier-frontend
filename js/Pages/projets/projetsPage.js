@@ -11,10 +11,12 @@ import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils
 import { canManage, isAdmin } from "../../Utils/auth.js";
 import { getSession } from "../../Utils/auth.js";
 import { filtrerProjetsAccessibles } from "../../Utils/projetAccessHelpers.js";
+import { paginerListe, renderPagination } from "../../Utils/pagination.js";
 
 let currentFilter = "Tout";
 let currentView = "liste";
 let searchQuery = "";
+let currentPageProjets = 1;
 
 let progressionParProjet = {};
 
@@ -64,6 +66,9 @@ function renderPage() {
     const filtered = allProjets
         .filter(p => currentFilter === "Tout" || p.statutProjet === currentFilter)
         .filter(p => !searchQuery || p.nom.toLowerCase().includes(searchQuery.toLowerCase()) || p.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const { items: projetsPagines, page: pageProjets, totalPages: totalPagesProjets } = paginerListe(filtered, currentPageProjets, 10);
+    currentPageProjets = pageProjets;
 
     const FILTERS = ["Tout", "En cours", "Terminer", "Suspendu"];
 
@@ -131,8 +136,9 @@ function renderPage() {
       <p class="text-xs text-muted">${filtered.length} projet(s) affiché(s)</p>
 
       <div id="projetsContent">
-        ${currentView === "liste" ? renderListeView(filtered) : renderCardsView(filtered)}
+        ${currentView === "liste" ? renderListeView(projetsPagines) : renderCardsView(projetsPagines)}
       </div>
+      ${renderPagination(pageProjets, totalPagesProjets, "projets")}
 
     </div>
   `;
@@ -284,12 +290,14 @@ function bindEvents() {
     document.querySelectorAll(".filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             currentFilter = btn.dataset.filter;
+            currentPageProjets = 1;
             renderPage();
         });
     });
 
     document.getElementById("searchProjet")?.addEventListener("input", e => {
         searchQuery = e.target.value;
+        currentPageProjets = 1;
         renderPage();
     });
 
@@ -301,6 +309,13 @@ function bindEvents() {
     document.getElementById("viewCards")?.addEventListener("click", () => {
         currentView = "cards";
         renderPage();
+    });
+
+    document.querySelectorAll('.pagination-btn[data-target="projets"]').forEach(btn => {
+        btn.addEventListener("click", () => {
+            currentPageProjets = Number(btn.dataset.page);
+            renderPage();
+        });
     });
 
     document.querySelectorAll("[data-detail]").forEach(btn => {
