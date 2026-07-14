@@ -13,7 +13,7 @@ import { openTacheDetail } from "./tacheDetail.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 import { openSignalementForm } from "../signalements/signalementForm.js";
 import { paginerListe, renderPagination } from "../../Utils/pagination.js";
-import { archiverPhase } from "../../Services/phaseService.js";
+import { archiverPhase, getPhasesArchiveesByProjet, restaurerPhase } from "../../Services/phaseService.js";
 
 let currentPagePhases = 1;
 const PHASES_PAR_PAGE = 5;
@@ -105,6 +105,30 @@ export async function renderProjetDetail(projetId) {
             },
         });
     }
+
+    async function ouvrirDrawerPhasesArchivees() {
+    const phasesArchivees = await getPhasesArchiveesByProjet(projetId);
+
+    openDrawer({
+        title: "Phases archivées",
+        icon: "fa-box-archive",
+        body: renderPhasesArchiveesBody(phasesArchivees),
+        onMount: panel => {
+            panel.querySelectorAll(".btn-restaurer-phase").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    try {
+                        await restaurerPhase(btn.dataset.phaseId);
+                        showToast("Phase restaurée.");
+                        closeDrawer();
+                        await reload();
+                    } catch (err) {
+                        showToast(err.message, "error");
+                    }
+                });
+            });
+        },
+    });
+}
 
     function renderDetail() {
         app.innerHTML = `
@@ -201,6 +225,10 @@ export async function renderProjetDetail(projetId) {
 
         document.getElementById("btnVoirArchives")?.addEventListener("click", () => {
             ouvrirDrawerArchives();
+        });
+
+        document.getElementById("btnPhasesArchivees")?.addEventListener("click", () => {
+            ouvrirDrawerPhasesArchivees();
         });
 
         document.getElementById("btnArchiverProjet")?.addEventListener("click", () => {
@@ -506,6 +534,36 @@ function renderArchivesBody(projets) {
     `;
 }
 
+function renderPhasesArchiveesBody(phases) {
+    if (phases.length === 0) {
+        return `
+          <div class="rounded-2xl border border-dashed border-bordure bg-fond py-12 text-center">
+            <i class="fa-solid fa-box-archive text-3xl text-muted/30"></i>
+            <p class="mt-3 text-sm font-semibold text-muted">Aucune phase archivée.</p>
+          </div>
+        `;
+    }
+
+    return `
+      <div class="space-y-3">
+        ${phases.map(p => `
+          <div class="rounded-2xl border border-bordure bg-fond p-4">
+            <div class="mb-1 flex items-center justify-between gap-2">
+              <span class="truncate font-bold text-texte">Phase ${p.ordre} : ${escapeHtml(p.libelle)}</span>
+              <span class="flex-shrink-0 rounded-full bg-inactif/10 px-2 py-0.5 text-[10px] font-bold text-inactif">Archivée</span>
+            </div>
+            <p class="mb-3 text-xs text-muted">
+              ${formatDate(p.dateDeDebut)} → ${formatDate(p.dateDeFinPrevue)}
+            </p>
+            <button class="btn-restaurer-phase w-full rounded-xl border border-bordure bg-carte px-3 py-1.5 text-xs font-bold text-muted transition hover:bg-succes/10 hover:text-succes" data-phase-id="${escapeHtml(p.id)}">
+              Restaurer
+            </button>
+          </div>
+        `).join("")}
+      </div>
+    `;
+}
+
 // ─── Onglet Phases (+ tâches) ─────────────────────────────────────────────────
 function renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheId) {
     const FILTERS = ["Tout", "En cours", "Terminer", "Ordre"];
@@ -524,11 +582,17 @@ function renderPhasesTab(phases, projetId, tachesByPhaseId, affectationsByTacheI
             </button>
           `).join("")}
         </div>
-        ${canManage() ? `
-          <button id="btnNouvellePhase" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
-            <i class="fa-solid fa-plus text-xs"></i> Nouvelle phase
-          </button>
-        ` : ""}
+        <div class="flex flex-shrink-0 gap-2">
+          ${canManage() ? `
+            <button id="btnPhasesArchivees" class="flex items-center gap-2 rounded-xl bg-inactif/10 px-3 py-2.5 text-sm font-bold text-inactif transition hover:bg-inactif/20">
+              <i class="fa-solid fa-box-archive text-xs"></i>
+              <span class="hidden sm:inline">Archivées</span>
+            </button>
+            <button id="btnNouvellePhase" class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-secondary">
+              <i class="fa-solid fa-plus text-xs"></i> Nouvelle phase
+            </button>
+          ` : ""}
+        </div>
       </div>
 
       <div class="space-y-3">

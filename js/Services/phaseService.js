@@ -72,3 +72,20 @@ return apiRequest(
 "Impossible d'archiver la phase."
     );
 }
+
+export async function restaurerPhase(id) {
+return apiRequest(
+`${ENDPOINTS.phases}/${id}`,
+        { method: "PATCH", body: JSON.stringify({ archive: false }) },
+"Impossible de restaurer la phase."
+    );
+}
+
+export async function getPhasesArchiveesByProjet(projetId) {
+const phases = await apiRequest(
+`${ENDPOINTS.phases}?projetId=${projetId}`,
+        {},
+"Impossible de charger les phases archivées du projet."
+    );
+return phases.filter(p => p.archive === true);
+}
