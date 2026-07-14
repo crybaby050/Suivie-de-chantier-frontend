@@ -13,6 +13,7 @@ import { openTacheDetail } from "./tacheDetail.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils/progressionHelpers.js";
 import { openSignalementForm } from "../signalements/signalementForm.js";
 import { paginerListe, renderPagination } from "../../Utils/pagination.js";
+import { archiverPhase } from "../../Services/phaseService.js";
 
 let currentPagePhases = 1;
 const PHASES_PAR_PAGE = 5;
@@ -275,6 +276,25 @@ export async function renderProjetDetail(projetId) {
             }
         });
 
+        document.querySelectorAll(".btn-delete-phase").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const phaseId = btn.dataset.phaseId;
+                openConfirm({
+                    message: "Archiver cette phase ? Elle ne sera plus visible dans le projet, mais ses données sont conservées.",
+                    confirmLabel: "Archiver",
+                    onConfirm: async () => {
+                        try {
+                            await archiverPhase(phaseId);
+                            showToast("Phase archivée.");
+                            await reload();
+                        } catch (err) {
+                            showToast(err.message, "error");
+                        }
+                    },
+                });
+            });
+        });
+
         // Nouvelle tâche (une phase à la fois)
         document.querySelectorAll(".btn-add-tache").forEach(btn => {
             btn.addEventListener("click", () => {
@@ -338,6 +358,7 @@ export async function renderProjetDetail(projetId) {
             }
         });
     }
+    
 
     renderDetail();
 }

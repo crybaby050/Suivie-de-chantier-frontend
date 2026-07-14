@@ -12,19 +12,22 @@ function normalizePhase(data) {
         dateDeDebut: data.dateDeDebut,
         dateDeFinPrevue: data.dateDeFinPrevue,
         statutPhase: data.statutPhase ?? "En attente",
+        archive: data.archive ?? false,
     };
 }
 
 export async function getPhases() {
-    return apiRequest(ENDPOINTS.phases, {}, "Impossible de charger les phases.");
+    const phases = await apiRequest(ENDPOINTS.phases, {}, "Impossible de charger les phases.");
+    return phases.filter(p => !p.archive);
 }
 
 export async function getPhasesByProjet(projetId) {
-    return apiRequest(
+    const phases = await apiRequest(
         `${ENDPOINTS.phases}?projetId=${projetId}`,
         {},
         "Impossible de charger les phases du projet."
     );
+    return phases.filter(p => !p.archive);
 }
 
 export async function createPhase(data) {
@@ -58,5 +61,14 @@ export async function deletePhase(id) {
         `${ENDPOINTS.phases}/${id}`,
         { method: "DELETE" },
         "Impossible de supprimer la phase."
+    );
+}
+
+// Archivage doux (n'efface jamais les données)
+export async function archiverPhase(id) {
+return apiRequest(
+`${ENDPOINTS.phases}/${id}`,
+        { method: "PATCH", body: JSON.stringify({ archive: true }) },
+"Impossible d'archiver la phase."
     );
 }
