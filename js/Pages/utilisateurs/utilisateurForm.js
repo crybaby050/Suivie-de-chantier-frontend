@@ -6,6 +6,7 @@ import { apiRequest } from "../../Services/apiClient.js";
 import { ENDPOINTS } from "../../Config/api.js";
 import { createId } from "../../Utils/id.js";
 
+
 const ROLES = ["Admin", "Chef de chantier", "Ouvrier", "Client"];
 
 const SCHEMA_CREATE = {
@@ -91,6 +92,17 @@ export function openUserForm(user = null, onSuccess) {
     onConfirm: async () => {
       const data = validator.validate();
       if (!data) return false;
+
+      // Vérification de l'unicité de l'email (insensible à la casse)
+      const tousLesUtilisateurs = await getUtilisateurs();
+      const emailDejaUtilise = tousLesUtilisateurs.some(u =>
+        u.email.toLowerCase() === data.email.toLowerCase() && u.id !== user?.id
+      );
+
+      if (emailDejaUtilise) {
+        showToast("Cet email est déjà utilisé par un autre utilisateur.", "error");
+        return false;
+      }
 
       try {
         if (isEdit) {
