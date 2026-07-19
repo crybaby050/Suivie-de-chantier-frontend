@@ -42,23 +42,6 @@ export function renderLoginPage() {
               Suivez l'avancement de vos projets, gérez vos équipes et anticipez les blocages depuis une seule plateforme. Une solution pensée pour les professionnels du BTP.
             </p>
           </div>
-
-          <!-- Carte phase exemple -->
-          <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm ring-1 ring-white/20">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="h-2 w-2 rounded-full bg-accent"></div>
-                <div>
-                  <p class="text-sm font-bold text-white">Phase 2 — Fondations</p>
-                  <p class="text-xs text-white/60">Assignée à Chef de chantier</p>
-                </div>
-              </div>
-              <span class="rounded-full bg-accent px-3 py-1 text-xs font-bold text-primary">En attente</span>
-            </div>
-            <div class="mt-3 h-1.5 w-full rounded-full bg-white/20">
-              <div class="h-1.5 w-1/3 rounded-full bg-accent"></div>
-            </div>
-          </div>
         </div>
 
         <!-- Footer gauche -->
