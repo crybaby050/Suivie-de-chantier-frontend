@@ -14,6 +14,8 @@ import { calculerProgressionPhase, calculerProgressionProjet } from "../../Utils
 import { openSignalementForm } from "../signalements/signalementForm.js";
 import { paginerListe, renderPagination } from "../../Utils/pagination.js";
 import { archiverPhase, getPhasesArchiveesByProjet, restaurerPhase } from "../../Services/phaseService.js";
+import { getMembresByProjet } from "../../Services/projetMembreService.js";
+import { initMembresOuvriersWidget } from "./projetMembresOuvriers.js";
 
 let currentPagePhases = 1;
 const PHASES_PAR_PAGE = 5;
@@ -64,7 +66,11 @@ export async function renderProjetDetail(projetId) {
 
     const chef = allUtilisateurs.find(u => u.id === projet.chefId);
     const client = allUtilisateurs.find(u => u.roleGlobal === "Client");
-    const membres = allUtilisateurs.filter(u => u.roleGlobal === "Ouvrier");
+
+    const membresProjetActuel = await getMembresByProjet(projetId);
+    const membres = allUtilisateurs.filter(u =>
+        u.roleGlobal === "Ouvrier" && membresProjetActuel.some(m => m.utilisateurId === u.id)
+    );
 
     let activeTab = "overview";
 
@@ -213,6 +219,13 @@ export async function renderProjetDetail(projetId) {
                 renderDetail();
             });
         });
+
+        if (activeTab === "overview" && canManage()) {
+            initMembresOuvriersWidget(document.getElementById("membresOuvriersWidget"), {
+                projetId,
+                onChanged: reload,
+            });
+        }
 
         document.getElementById("btnRetour")?.addEventListener("click", async () => {
             const { renderProjetsPage } = await import("./projetsPage.js");
@@ -467,13 +480,21 @@ function renderOverviewTab(projet, chef, client, membres) {
 
         <div class="rounded-2xl border border-bordure bg-carte p-5 shadow-card">
           <h2 class="mb-4 text-base font-black text-texte">Membres</h2>
+
           <div class="space-y-3">
             ${chef ? renderMembreRow(chef, "Chef de chantier") : ""}
-            ${membres.map(m => renderMembreRow(m, "Ouvrier")).join("")}
             ${client ? renderMembreRow(client, "Client") : ""}
-            ${!chef && membres.length === 0 && !client
-            ? `<p class="text-sm text-muted">Aucun membre assigné.</p>`
-            : ""}
+            ${!chef && !client ? `<p class="text-sm text-muted">Aucun chef ni client assigné.</p>` : ""}
+          </div>
+
+          <div class="mt-4 border-t border-bordure pt-4">
+            <p class="mb-2 text-xs font-black uppercase tracking-wider text-muted">Ouvriers</p>
+            ${canManage()
+              ? `<div id="membresOuvriersWidget"><p class="text-xs text-muted">Chargement...</p></div>`
+              : (membres.length === 0
+                  ? `<p class="text-sm text-muted">Aucun ouvrier assigné.</p>`
+                  : `<div class="space-y-3">${membres.map(m => renderMembreRow(m, "Ouvrier")).join("")}</div>`)
+            }
           </div>
         </div>
       </div>

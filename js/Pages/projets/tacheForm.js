@@ -1,10 +1,12 @@
 import { escapeHtml } from "../../Utils/html.js";
 import { showToast } from "../../Components/toast.js";
-import { openModal } from "../../Components/modal.js";
+import { openModal, openConfirm } from "../../Components/modal.js";
 import { createFormValidator, Rules } from "../../Utils/formValidator.js";
 import { createTache, updateTache } from "../../Services/tacheService.js";
 import { affecterUtilisateur, supprimerAffectation } from "../../Services/affectationService.js";
+import { getMembresByProjet, getMembres } from "../../Services/projetMembreService.js";
 import { allUtilisateurs } from "./projetsState.js";
+import { getInitials } from "./projetsHelpers.js";
 
 const TACHE_SCHEMA = {
     tacheTitre: { rules: [Rules.required("Le titre est obligatoire.")], transform: v => v.trim(), as: "titre" },
@@ -14,12 +16,35 @@ const TACHE_SCHEMA = {
     tacheStatut: { rules: [], transform: v => v, as: "statutTache" },
 };
 
-export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectations = []) {
+/**
+ * @param {string} phaseId
+ * @param {string} projetId - projet auquel appartient la phase (pour déterminer qui est "sur ce chantier")
+ * @param {Function} onSuccess
+ * @param {object|null} [tache]
+ * @param {object[]} [currentAffectations]
+ */
+export async function openTacheForm(phaseId, projetId, onSuccess, tache = null, currentAffectations = []) {
     const ouvriers = allUtilisateurs.filter(u => u.roleGlobal === "Ouvrier");
-    const assignedIds = new Set(currentAffectations.map(a => a.utilisateurId));
+
+    // Qui est déjà membre de CE projet, et qui est membre d'un AUTRE projet
+    const [membresProjetActuel, tousLesMembres] = await Promise.all([
+        getMembresByProjet(projetId),
+        getMembres(),
+    ]);
+    const membresIciIds = new Set(membresProjetActuel.map(m => m.utilisateurId));
+    const occupesAilleurs = new Set(
+        tousLesMembres
+            .filter(m => m.projetId !== projetId && ouvriers.some(o => o.id === m.utilisateurId))
+            .map(m => m.utilisateurId)
+    );
 
     let validator;
     let modalRoot;
+
+    // Etat local de sélection (initialisé sur les affectations actuelles)
+    let selectedIds = new Set(currentAffectations.map(a => a.utilisateurId));
+    let searchQuery = "";
+    let dropdownOuvert = false;
 
     openModal({
         title: tache ? "Modifier la tâche" : "Nouvelle tâche",
@@ -71,28 +96,20 @@ export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectati
         </div>
         <div>
           <label class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Ouvriers assignés</label>
-          ${ouvriers.length === 0 ? `<p class="text-sm italic text-muted">Aucun ouvrier disponible.</p>` : `
-            <div class="max-h-40 space-y-1.5 overflow-y-auto rounded-xl border border-bordure p-2">
-              ${ouvriers.map(o => `
-                <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-texte transition hover:bg-fond">
-                  <input type="checkbox" class="tache-ouvrier-check" value="${o.id}" ${assignedIds.has(o.id) ? "checked" : ""} />
-                  ${escapeHtml(o.nom)}
-                </label>
-              `).join("")}
-            </div>
-          `}
+          <div id="tacheOuvriersWidget"></div>
         </div>
       </div>
     `,
         onMount: modal => {
             validator = createFormValidator(modal, TACHE_SCHEMA);
             modalRoot = modal;
+            renderOuvriersWidget();
         },
         onConfirm: async () => {
             const data = validator.validate();
             if (!data) return false;
 
-            const checkedIds = [...modalRoot.querySelectorAll(".tache-ouvrier-check:checked")].map(el => el.value);
+            const checkedIds = [...selectedIds];
 
             try {
                 let savedTache;
@@ -104,6 +121,7 @@ export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectati
                     showToast("Tâche créée.");
                 }
 
+                const assignedIds = new Set(currentAffectations.map(a => a.utilisateurId));
                 const toAdd = checkedIds.filter(id => !assignedIds.has(id));
                 const toRemove = currentAffectations.filter(a => !checkedIds.includes(a.utilisateurId));
 
@@ -120,4 +138,142 @@ export function openTacheForm(phaseId, onSuccess, tache = null, currentAffectati
             }
         },
     });
+
+    // ─── Widget recherche + sélection des ouvriers ─────────────────────────────
+    function renderOuvriersWidget() {
+        const widget = modalRoot.querySelector("#tacheOuvriersWidget");
+        if (!widget) return;
+
+        const selectionnes = ouvriers.filter(o => selectedIds.has(o.id));
+        const filtered = ouvriers.filter(o => {
+            if (selectedIds.has(o.id)) return false;
+            if (!searchQuery) return true;
+            return o.nom.toLowerCase().includes(searchQuery.toLowerCase());
+        });
+
+        widget.innerHTML = `
+          <div class="space-y-2">
+            <div class="flex flex-wrap gap-2">
+              ${selectionnes.length === 0
+                ? `<p class="text-xs italic text-muted">Aucun ouvrier assigné.</p>`
+                : selectionnes.map(o => `
+                  <span class="flex items-center gap-2 rounded-xl bg-primary/10 py-1.5 pl-3 pr-2 text-xs font-bold text-primary">
+                    <span class="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px]">${getInitials(o.nom)}</span>
+                    ${escapeHtml(o.nom)}
+                    <button
+                      type="button"
+                      class="btn-retirer-ouvrier-tache flex h-4 w-4 items-center justify-center rounded-full text-primary/70 transition hover:bg-primary/20 hover:text-primary"
+                      data-utilisateur-id="${escapeHtml(o.id)}"
+                      data-nom="${escapeHtml(o.nom)}"
+                      title="Retirer"
+                    >
+                      <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                  </span>
+                `).join("")}
+            </div>
+
+            <div class="relative">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted"></i>
+                <input
+                  type="text"
+                  id="rechercheOuvrierTacheInput"
+                  value="${escapeHtml(searchQuery)}"
+                  placeholder="Rechercher un ouvrier..."
+                  autocomplete="off"
+                  class="w-full rounded-xl border border-bordure bg-fond py-2 pl-8 pr-4 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              ${dropdownOuvert ? `
+                <div class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-bordure bg-carte shadow-card">
+                  ${filtered.length === 0
+                    ? `<p class="px-3 py-3 text-xs italic text-muted">Aucun ouvrier trouvé.</p>`
+                    : filtered.map(o => {
+                        const estIci = membresIciIds.has(o.id);
+                        const occupe = !estIci && occupesAilleurs.has(o.id);
+                        return `
+                          <button
+                            type="button"
+                            class="btn-ajouter-ouvrier-tache flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition
+                              ${occupe ? "cursor-not-allowed text-muted/50" : "text-texte hover:bg-fond"}"
+                            data-utilisateur-id="${escapeHtml(o.id)}"
+                            ${occupe ? "disabled" : ""}
+                          >
+                            <span class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${occupe ? "bg-muted/10 text-muted" : "bg-primary/10 text-primary"} text-[10px] font-black">
+                              ${getInitials(o.nom)}
+                            </span>
+                            <span class="min-w-0 flex-1 truncate">${escapeHtml(o.nom)}</span>
+                            ${occupe ? `<span class="flex-shrink-0 text-[10px] italic text-muted">Sur un autre chantier</span>` : ""}
+                          </button>
+                        `;
+                      }).join("")
+                  }
+                </div>
+              ` : ""}
+            </div>
+          </div>
+        `;
+
+        bindWidgetEvents(widget);
+    }
+
+    function bindWidgetEvents(widget) {
+        const input = widget.querySelector("#rechercheOuvrierTacheInput");
+
+        input?.addEventListener("focus", () => {
+            dropdownOuvert = true;
+            renderOuvriersWidget();
+            focusFinTexte();
+        });
+
+        input?.addEventListener("input", e => {
+            searchQuery = e.target.value;
+            dropdownOuvert = true;
+            renderOuvriersWidget();
+            focusFinTexte();
+        });
+
+        input?.addEventListener("blur", () => {
+            setTimeout(() => {
+                dropdownOuvert = false;
+                renderOuvriersWidget();
+            }, 150);
+        });
+
+        widget.querySelectorAll(".btn-ajouter-ouvrier-tache").forEach(btn => {
+            btn.addEventListener("click", () => {
+                if (btn.disabled) return;
+                selectedIds.add(btn.dataset.utilisateurId);
+                searchQuery = "";
+                dropdownOuvert = false;
+                renderOuvriersWidget();
+            });
+        });
+
+        widget.querySelectorAll(".btn-retirer-ouvrier-tache").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const utilisateurId = btn.dataset.utilisateurId;
+                const nom = btn.dataset.nom;
+
+                openConfirm({
+                    message: `Retirer ${nom} de cette tâche ?`,
+                    confirmLabel: "Retirer",
+                    onConfirm: () => {
+                        selectedIds.delete(utilisateurId);
+                        renderOuvriersWidget();
+                    },
+                });
+            });
+        });
+    }
+
+    function focusFinTexte() {
+        const el = modalRoot.querySelector("#rechercheOuvrierTacheInput");
+        if (el) {
+            el.focus();
+            el.selectionStart = el.selectionEnd = el.value.length;
+        }
+    }
 }
