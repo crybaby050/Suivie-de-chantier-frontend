@@ -140,6 +140,8 @@ export async function initMembresOuvriersWidget(container, { projetId, onChanged
         input?.addEventListener("blur", () => {
             // délai pour laisser le clic sur une option du dropdown s'exécuter avant fermeture
             setTimeout(() => {
+                const inputActuel = container.querySelector("#rechercheOuvrierInput");
+                if (document.activeElement === inputActuel) return; // toujours focus, ne pas fermer
                 dropdownOuvert = false;
                 render();
             }, 150);
