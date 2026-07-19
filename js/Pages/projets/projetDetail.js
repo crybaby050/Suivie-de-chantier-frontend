@@ -339,7 +339,7 @@ export async function renderProjetDetail(projetId) {
         // Nouvelle tâche (une phase à la fois)
         document.querySelectorAll(".btn-add-tache").forEach(btn => {
             btn.addEventListener("click", () => {
-                openTacheForm(btn.dataset.phaseId, reload);
+                openTacheForm(btn.dataset.phaseId, projetId, reload);
             });
         });
 
