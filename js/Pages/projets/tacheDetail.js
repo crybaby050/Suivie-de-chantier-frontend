@@ -86,7 +86,7 @@ export function openTacheDetail(tache, affectations, phaseId, projetId, onChange
     // pas correctement après un clic sur "Modifier", montre-moi Components/modal.js.
     setTimeout(() => {
     modalRoot?.querySelector("#btnModifierTache")?.addEventListener("click", () => {
-        openTacheForm(phaseId, onChanged, tache, affectations);
+        openTacheForm(phaseId, projetId, onChanged, tache, affectations);
     });
     modalRoot?.querySelector("#btnSignalerTache")?.addEventListener("click", () => {
         openSignalementForm([], () => {}, {

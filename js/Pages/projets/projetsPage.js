@@ -21,9 +21,9 @@ let currentPageProjets = 1;
 let progressionParProjet = {};
 
 export async function renderProjetsPage() {
-    const app = document.getElementById("app");
+  const app = document.getElementById("app");
 
-    app.innerHTML = `
+  app.innerHTML = `
     <div class="grid min-h-[60vh] place-items-center">
       <div class="flex flex-col items-center gap-3">
         <div class="h-10 w-10 animate-spin rounded-full border-4 border-bordure border-t-primary"></div>
@@ -32,47 +32,47 @@ export async function renderProjetsPage() {
     </div>
   `;
 
-    const session = getSession();
-    const [projetsBruts, utilisateurs, phases, taches] = await Promise.all([
+  const session = getSession();
+  const [projetsBruts, utilisateurs, phases, taches] = await Promise.all([
     getProjets(),
     getUtilisateurs(),
     getPhases(),
     getTaches(),
-]);
-const projets = await filtrerProjetsAccessibles(projetsBruts, session);
-setAllProjets(projets);
-setAllUtilisateurs(utilisateurs);
-progressionParProjet = calculerProgressionParProjet(projets, phases, taches);
+  ]);
+  const projets = await filtrerProjetsAccessibles(projetsBruts, session);
+  setAllProjets(projets);
+  setAllUtilisateurs(utilisateurs);
+  progressionParProjet = calculerProgressionParProjet(projets, phases, taches);
 
-    renderPage();
+  renderPage();
 }
 
 function calculerProgressionParProjet(projets, phases, taches) {
-    const map = {};
-    projets.forEach(projet => {
-        const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
-        const phasesAvecProgression = phasesDuProjet.map(phase => ({
-            ...phase,
-            progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
-        }));
-        map[projet.id] = calculerProgressionProjet(phasesAvecProgression);
-    });
-    return map;
+  const map = {};
+  projets.forEach(projet => {
+    const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
+    const phasesAvecProgression = phasesDuProjet.map(phase => ({
+      ...phase,
+      progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
+    }));
+    map[projet.id] = calculerProgressionProjet(phasesAvecProgression);
+  });
+  return map;
 }
 
 function renderPage() {
-    const app = document.getElementById("app");
+  const app = document.getElementById("app");
 
-    const filtered = allProjets
-        .filter(p => currentFilter === "Tout" || p.statutProjet === currentFilter)
-        .filter(p => !searchQuery || p.nom.toLowerCase().includes(searchQuery.toLowerCase()) || p.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filtered = allProjets
+    .filter(p => currentFilter === "Tout" || p.statutProjet === currentFilter)
+    .filter(p => !searchQuery || p.nom.toLowerCase().includes(searchQuery.toLowerCase()) || p.adresse.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const { items: projetsPagines, page: pageProjets, totalPages: totalPagesProjets } = paginerListe(filtered, currentPageProjets, 10);
-    currentPageProjets = pageProjets;
+  const { items: projetsPagines, page: pageProjets, totalPages: totalPagesProjets } = paginerListe(filtered, currentPageProjets, 10);
+  currentPageProjets = pageProjets;
 
-    const FILTERS = ["Tout", "En cours", "Terminer", "Suspendu"];
+  const FILTERS = ["Tout", "En cours", "Terminer", "Suspendu"];
 
-    app.innerHTML = `
+  app.innerHTML = `
     <div class="space-y-5">
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -102,8 +102,8 @@ function renderPage() {
             <button
               class="filter-btn rounded-xl px-4 py-2 text-sm font-bold transition
                 ${currentFilter === f
-            ? "bg-primary text-white shadow-soft"
-            : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
+      ? "bg-primary text-white shadow-soft"
+      : "bg-carte text-muted border border-bordure hover:bg-fond hover:text-primary"}"
               data-filter="${f}"
             >
               ${f}
@@ -143,20 +143,20 @@ function renderPage() {
     </div>
   `;
 
-    bindEvents();
+  bindEvents();
 }
 
 function renderListeView(projets) {
-    if (projets.length === 0) {
-        return `
+  if (projets.length === 0) {
+    return `
       <div class="rounded-2xl border border-dashed border-bordure bg-carte py-16 text-center">
         <i class="fa-solid fa-building text-3xl text-muted/30"></i>
         <p class="mt-3 text-sm font-semibold text-muted">Aucun projet trouvé.</p>
       </div>
     `;
-    }
+  }
 
-    return `
+  return `
     <div class="overflow-hidden rounded-2xl border border-bordure bg-carte shadow-card">
       <div class="overflow-x-auto">
         <table class="min-w-full border-collapse">
@@ -169,11 +169,11 @@ function renderListeView(projets) {
           </thead>
           <tbody>
             ${projets.map(projet => {
-        const chef = allUtilisateurs.find(u => u.id === projet.chefId);
-        const statut = getStatutBadge(projet.statutProjet);
-        const progression = progressionParProjet[projet.id] ?? 0;
+    const chef = allUtilisateurs.find(u => u.id === projet.chefId);
+    const statut = getStatutBadge(projet.statutProjet);
+    const progression = progressionParProjet[projet.id] ?? 0;
 
-        return `
+    return `
                 <tr class="border-t border-bordure transition hover:bg-fond/50">
                   <td class="px-5 py-4">
                     <div class="flex items-center gap-3">
@@ -210,7 +210,7 @@ function renderListeView(projets) {
                   </td>
                 </tr>
               `;
-    }).join("")}
+  }).join("")}
           </tbody>
         </table>
       </div>
@@ -219,23 +219,23 @@ function renderListeView(projets) {
 }
 
 function renderCardsView(projets) {
-    if (projets.length === 0) {
-        return `
+  if (projets.length === 0) {
+    return `
       <div class="rounded-2xl border border-dashed border-bordure bg-carte py-16 text-center">
         <i class="fa-solid fa-building text-3xl text-muted/30"></i>
         <p class="mt-3 text-sm font-semibold text-muted">Aucun projet trouvé.</p>
       </div>
     `;
-    }
+  }
 
-    return `
+  return `
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       ${projets.map(projet => {
-        const chef = allUtilisateurs.find(u => u.id === projet.chefId);
-        const statut = getStatutBadge(projet.statutProjet);
-        const progression = progressionParProjet[projet.id] ?? 0;
+    const chef = allUtilisateurs.find(u => u.id === projet.chefId);
+    const statut = getStatutBadge(projet.statutProjet);
+    const progression = progressionParProjet[projet.id] ?? 0;
 
-        return `
+    return `
           <div class="flex flex-col rounded-2xl border border-bordure bg-carte p-5 shadow-card transition hover:shadow-soft">
             <div class="mb-4 flex items-start justify-between">
               <div class="flex items-center gap-3 min-w-0">
@@ -279,48 +279,56 @@ function renderCardsView(projets) {
             </div>
           </div>
         `;
-    }).join("")}
+  }).join("")}
     </div>
   `;
 }
 
 function bindEvents() {
-    document.getElementById("btnNewProjet")?.addEventListener("click", () => openProjetForm(null, renderProjetsPage));
+  document.getElementById("btnNewProjet")?.addEventListener("click", () => openProjetForm(null, renderProjetsPage));
 
-    document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            currentFilter = btn.dataset.filter;
-            currentPageProjets = 1;
-            renderPage();
-        });
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentFilter = btn.dataset.filter;
+      currentPageProjets = 1;
+      renderPage();
     });
+  });
 
-    document.getElementById("searchProjet")?.addEventListener("input", e => {
-        searchQuery = e.target.value;
-        currentPageProjets = 1;
-        renderPage();
-    });
+  document.getElementById("searchProjet")?.addEventListener("input", e => {
+    searchQuery = e.target.value;
+    currentPageProjets = 1;
+    const curseur = e.target.selectionStart;
 
-    document.getElementById("viewListe")?.addEventListener("click", () => {
-        currentView = "liste";
-        renderPage();
-    });
+    renderPage();
 
-    document.getElementById("viewCards")?.addEventListener("click", () => {
-        currentView = "cards";
-        renderPage();
-    });
+    const input = document.getElementById("searchProjet");
+    if (input) {
+      input.focus();
+      input.setSelectionRange(curseur, curseur);
+    }
+  });
 
-    document.querySelectorAll('.pagination-btn[data-target="projets"]').forEach(btn => {
-        btn.addEventListener("click", () => {
-            currentPageProjets = Number(btn.dataset.page);
-            renderPage();
-        });
-    });
+  document.getElementById("viewListe")?.addEventListener("click", () => {
+    currentView = "liste";
+    renderPage();
+  });
 
-    document.querySelectorAll("[data-detail]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            renderProjetDetail(btn.dataset.detail);
-        });
+  document.getElementById("viewCards")?.addEventListener("click", () => {
+    currentView = "cards";
+    renderPage();
+  });
+
+  document.querySelectorAll('.pagination-btn[data-target="projets"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentPageProjets = Number(btn.dataset.page);
+      renderPage();
     });
+  });
+
+  document.querySelectorAll("[data-detail]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      renderProjetDetail(btn.dataset.detail);
+    });
+  });
 }
