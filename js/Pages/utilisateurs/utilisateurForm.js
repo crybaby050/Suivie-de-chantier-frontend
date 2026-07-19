@@ -5,7 +5,7 @@ import { createFormValidator, Rules } from "../../Utils/formValidator.js";
 import { apiRequest } from "../../Services/apiClient.js";
 import { ENDPOINTS } from "../../Config/api.js";
 import { createId } from "../../Utils/id.js";
-
+import { getUtilisateurs } from "../../Services/utilisateurService.js";
 
 const ROLES = ["Admin", "Chef de chantier", "Ouvrier", "Client"];
 
@@ -45,6 +45,7 @@ function userFormBody(user = null) {
           placeholder="ex: moussa@chantier.sn"
           class="w-full rounded-xl border border-bordure bg-fond px-4 py-2.5 text-sm text-texte outline-none transition placeholder:text-muted/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
+        <p id="userEmailDoublonError" class="mt-1 hidden text-xs text-bloque"></p>
       </div>
 
       ${!isEdit ? `
@@ -88,23 +89,38 @@ export function openUserForm(user = null, onSuccess) {
     confirmIcon:  "fa-floppy-disk",
     confirmClass: "bg-primary shadow-primary/20 hover:bg-secondary",
     body:         userFormBody(user),
-    onMount: modal => { validator = createFormValidator(modal, schema); },
+    onMount: modal => {
+      validator = createFormValidator(modal, schema);
+      modal.querySelector("#userEmail")?.addEventListener("input", () => {
+        const input = modal.querySelector("#userEmail");
+        const error = modal.querySelector("#userEmailDoublonError");
+        input?.classList.remove("!border-bloque", "focus:!ring-bloque/20");
+        error?.classList.add("hidden");
+      });
+    },
     onConfirm: async () => {
       const data = validator.validate();
       if (!data) return false;
 
-      // Vérification de l'unicité de l'email (insensible à la casse)
-      const tousLesUtilisateurs = await getUtilisateurs();
-      const emailDejaUtilise = tousLesUtilisateurs.some(u =>
-        u.email.toLowerCase() === data.email.toLowerCase() && u.id !== user?.id
-      );
-
-      if (emailDejaUtilise) {
-        showToast("Cet email est déjà utilisé par un autre utilisateur.", "error");
-        return false;
-      }
-
       try {
+        // Vérification de l'unicité de l'email (insensible à la casse)
+        const tousLesUtilisateurs = await getUtilisateurs();
+        const emailDejaUtilise = tousLesUtilisateurs.some(u =>
+          u.email.toLowerCase() === data.email.toLowerCase() && u.id !== user?.id
+        );
+
+        if (emailDejaUtilise) {
+          const input = document.getElementById("userEmail");
+          const error = document.getElementById("userEmailDoublonError");
+          input?.classList.add("!border-bloque", "focus:!ring-bloque/20");
+          if (error) {
+            error.textContent = "Cet email est déjà utilisé par un autre utilisateur.";
+            error.classList.remove("hidden");
+          }
+          input?.focus();
+          return false;
+        }
+
         if (isEdit) {
           await apiRequest(
             `${ENDPOINTS.utilisateurs}/${user.id}`,
