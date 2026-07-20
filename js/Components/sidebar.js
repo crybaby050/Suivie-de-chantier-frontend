@@ -13,6 +13,7 @@ export function renderSidebar() {
         { page: "signalements", label: "Signalements", icon: "fa-triangle-exclamation", manage: true },
         { page: "taches", label: "Mes tâches", icon: "fa-list-check", ouvrier: true },
         { page: "validationTaches", label: "Validation des tâches", icon: "fa-clipboard-check", manage: true },
+        { page: "messagerie", label: "Messagerie", icon: "fa-comments", always: true },
     ];
 
     const filteredLinks = NAV_LINKS.filter(link => {
