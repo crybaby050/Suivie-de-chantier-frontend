@@ -117,6 +117,13 @@ function demarrerPolling() {
             clearInterval(pollingInterval);
             return;
         }
+
+        // Ne jamais rafraîchir pendant que l'utilisateur est en train d'écrire,
+        // pour ne pas lui faire perdre son texte ni le focus du champ.
+        const messageInput = document.getElementById("messageInput");
+        const utilisateurEnTrainDecrire = document.activeElement === messageInput && messageInput.value.trim().length > 0;
+        if (utilisateurEnTrainDecrire) return;
+
         await chargerConversations();
         if (conversationActiveId) {
             messagesActifs = await getMessagesByConversation(conversationActiveId);
