@@ -2,11 +2,18 @@ import { getProjets } from "../../Services/projetService.js";
 import { getUtilisateurs } from "../../Services/utilisateurService.js";
 import { getMembres } from "../../Services/projetMembreService.js";
 
-/**
- * Charge le contexte nécessaire à la messagerie pour l'utilisateur connecté :
- * ses projets, l'ensemble des utilisateurs, et les contacts avec qui il
- * partage au moins un projet.
- */
+// Paires de rôles qui n'ont pas le droit de se contacter en message direct,
+// même s'ils partagent un projet (ils se croisent uniquement dans la discussion de groupe).
+const PAIRES_INTERDITES = [
+    ["Ouvrier", "Client"],
+];
+
+function paireAutorisee(roleA, roleB) {
+    return !PAIRES_INTERDITES.some(([r1, r2]) =>
+        (roleA === r1 && roleB === r2) || (roleA === r2 && roleB === r1)
+    );
+}
+
 export async function getContexteMessagerie(session) {
     const [projets, utilisateurs, membres] = await Promise.all([
         getProjets(),
@@ -24,7 +31,10 @@ export async function getContexteMessagerie(session) {
             .filter(m => mesProjetIds.has(m.projetId) && m.utilisateurId !== session.id)
             .map(m => m.utilisateurId)
     );
-    const contacts = utilisateurs.filter(u => contactIds.has(u.id));
+
+    const contacts = utilisateurs.filter(u =>
+        contactIds.has(u.id) && paireAutorisee(session.roleGlobal, u.roleGlobal)
+    );
 
     return { mesProjets, contacts, utilisateurs };
 }
