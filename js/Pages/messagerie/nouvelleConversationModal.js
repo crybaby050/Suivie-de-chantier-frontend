@@ -61,7 +61,11 @@ export function openNouvelleConversationModal(contacts, onSelect) {
             const container = modalRoot.querySelector(".space-y-3");
             if (container) container.outerHTML = bodyHTML(contacts, searchQuery);
             bindEvents();
-            modalRoot.querySelector("#rechercheContactInput")?.focus();
+            const nouvelInput = modalRoot.querySelector("#rechercheContactInput");
+            if (nouvelInput) {
+                nouvelInput.focus();
+                nouvelInput.selectionStart = nouvelInput.selectionEnd = nouvelInput.value.length;
+            }
         });
 
         modalRoot.querySelectorAll(".btn-choisir-contact").forEach(btn => {
