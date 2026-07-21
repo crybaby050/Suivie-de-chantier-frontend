@@ -12,6 +12,7 @@ import {
     getBrickCycleDuration
 } from "./Components/brickLoader.js";
 import { renderValidationTachesPage } from "./Pages/validationTachesPage.js";
+import { renderMessageriePage } from "./Pages/messageries/messageriePage.js";
 
 
 const routes = {
@@ -22,6 +23,7 @@ const routes = {
     signalements: renderSignalementsPage,
     taches: renderTachesPage,
     validationTaches: renderValidationTachesPage,
+    messagerie: renderMessageriePage,
 };
 
 const titles = {
@@ -32,13 +34,14 @@ const titles = {
     signalements: "Signalements",
     taches: "Mes tâches",
     validationTaches: "Validation des tâches",
+    messagerie: "Messagerie",
 };
 
 function canAccess(page) {
     if (isAdmin()) return true;
-    if (isChef()) return ["dashboard", "projets", "rapports", "signalements", "validationTaches"].includes(page);
-    if (isOuvrier()) return ["dashboard", "projets", "taches", "rapports", "signalements"].includes(page);
-    if (isClient()) return ["dashboard", "projets", "rapports"].includes(page);
+    if (isChef()) return ["dashboard", "projets", "rapports", "signalements", "validationTaches", "messagerie"].includes(page);
+    if (isOuvrier()) return ["dashboard", "projets", "taches", "rapports", "signalements", "messagerie"].includes(page);
+    if (isClient()) return ["dashboard", "projets", "rapports", "messagerie"].includes(page);
     return false;
 }
 
