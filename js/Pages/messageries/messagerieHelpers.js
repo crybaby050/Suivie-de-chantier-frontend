@@ -1,6 +1,7 @@
 import { getProjets } from "../../Services/projetService.js";
 import { getUtilisateurs } from "../../Services/utilisateurService.js";
 import { getMembres } from "../../Services/projetMembreService.js";
+import { isAdmin } from "../../Utils/auth.js";
 
 // Paires de rôles qui n'ont pas le droit de se contacter en message direct,
 // même s'ils partagent un projet (ils se croisent uniquement dans la discussion de groupe).
@@ -21,14 +22,22 @@ export async function getContexteMessagerie(session) {
         getMembres(),
     ]);
 
-    const mesProjetIds = new Set(
-        membres.filter(m => m.utilisateurId === session.id).map(m => m.projetId)
-    );
-    const mesProjets = projets.filter(p => mesProjetIds.has(p.id));
+    // L'admin est automatiquement présent sur la discussion de CHAQUE projet
+    let mesProjets;
+    if (isAdmin()) {
+        mesProjets = projets;
+    } else {
+        const mesProjetIds = new Set(
+            membres.filter(m => m.utilisateurId === session.id).map(m => m.projetId)
+        );
+        mesProjets = projets.filter(p => mesProjetIds.has(p.id));
+    }
+
+    const mesProjetIdsSet = new Set(mesProjets.map(p => p.id));
 
     const contactIds = new Set(
         membres
-            .filter(m => mesProjetIds.has(m.projetId) && m.utilisateurId !== session.id)
+            .filter(m => mesProjetIdsSet.has(m.projetId) && m.utilisateurId !== session.id)
             .map(m => m.utilisateurId)
     );
 

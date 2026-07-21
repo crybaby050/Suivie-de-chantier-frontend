@@ -6,6 +6,7 @@ import { updateStatutSignalement } from "../../Services/signalementService.js";
 import { updateProjet } from "../../Services/projetService.js";
 import { updatePhase } from "../../Services/phaseService.js";
 import { getStatutBadge, getCibleInfo, formatDate, getInitials } from "./signalementsHelpers.js";
+import { refreshSidebarBadges } from "../../Components/sidebar.js";
 
 /**
  * @param {object} signalement
@@ -14,12 +15,12 @@ import { getStatutBadge, getCibleInfo, formatDate, getInitials } from "./signale
  * @param {Function} onSuccess
  */
 export function renderSignalementDetail(signalement, contexte, onBack, onSuccess) {
-    const app = document.getElementById("app");
-    const { projet, phase, tache, rapport, auteur } = contexte;
-    const cibleInfo = getCibleInfo(signalement.cibleType);
+  const app = document.getElementById("app");
+  const { projet, phase, tache, rapport, auteur } = contexte;
+  const cibleInfo = getCibleInfo(signalement.cibleType);
 
-    function render() {
-        app.innerHTML = `
+  function render() {
+    app.innerHTML = `
       <div class="space-y-5">
 
         <div>
@@ -46,8 +47,8 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
           </div>
 
           ${signalement.description
-                ? `<p class="mb-6 whitespace-pre-wrap text-sm leading-7 text-texte">${escapeHtml(signalement.description)}</p>`
-                : `<p class="mb-6 text-sm italic text-muted">Aucune description.</p>`}
+        ? `<p class="mb-6 whitespace-pre-wrap text-sm leading-7 text-texte">${escapeHtml(signalement.description)}</p>`
+        : `<p class="mb-6 text-sm italic text-muted">Aucune description.</p>`}
 
           <div class="mb-6 flex items-center gap-3 rounded-xl bg-fond p-3">
             <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary">
@@ -71,51 +72,51 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
       </div>
     `;
 
-        bindEvents();
-    }
+    bindEvents();
+  }
 
-    function renderCibleDetail() {
-        if (signalement.cibleType === "Projet") {
-            return `
+  function renderCibleDetail() {
+    if (signalement.cibleType === "Projet") {
+      return `
         <div class="rounded-xl bg-fond p-3">
           <p class="text-sm font-bold text-texte">${escapeHtml(projet?.nom ?? "Projet introuvable")}</p>
           <p class="mt-1 text-xs text-muted">Statut actuel : <span class="font-bold text-texte">${escapeHtml(projet?.statutProjet ?? "—")}</span></p>
         </div>
       `;
-        }
-        if (signalement.cibleType === "Phase") {
-            return `
+    }
+    if (signalement.cibleType === "Phase") {
+      return `
         <div class="rounded-xl bg-fond p-3">
           <p class="text-sm font-bold text-texte">${escapeHtml(phase?.libelle ?? "Phase introuvable")}</p>
           <p class="mt-1 text-xs text-muted">Projet : ${escapeHtml(projet?.nom ?? "—")}</p>
           <p class="mt-1 text-xs text-muted">Statut actuel : <span class="font-bold text-texte">${escapeHtml(phase?.statutPhase ?? "—")}</span></p>
         </div>
       `;
-        }
-        if (signalement.cibleType === "Tache") {
-            return `
+    }
+    if (signalement.cibleType === "Tache") {
+      return `
         <div class="rounded-xl bg-fond p-3">
           <p class="text-sm font-bold text-texte">${escapeHtml(tache?.titre ?? "Tâche introuvable")}</p>
           <p class="mt-1 text-xs text-muted">Phase : ${escapeHtml(phase?.libelle ?? "—")} · Projet : ${escapeHtml(projet?.nom ?? "—")}</p>
           <p class="mt-1 text-xs text-muted">Statut actuel : <span class="font-bold text-texte">${escapeHtml(tache?.statutTache ?? "—")}</span> · ${tache?.progression ?? 0}%</p>
         </div>
       `;
-        }
-        if (signalement.cibleType === "Rapport") {
-            return `
+    }
+    if (signalement.cibleType === "Rapport") {
+      return `
         <div class="rounded-xl bg-fond p-3">
           <p class="line-clamp-3 text-sm text-texte">${escapeHtml(rapport?.contenu ?? "Rapport introuvable")}</p>
           <p class="mt-1 text-xs text-muted">Projet : ${escapeHtml(projet?.nom ?? "—")} · ${formatDate(rapport?.date)}</p>
         </div>
       `;
-        }
-        return `<p class="text-xs italic text-muted">Cible inconnue.</p>`;
     }
+    return `<p class="text-xs italic text-muted">Cible inconnue.</p>`;
+  }
 
-    function renderActionsAdmin() {
-        if (signalement.cibleType === "Projet" && projet) {
-            const dejaSuspendu = projet.statutProjet === "Suspendu";
-            return `
+  function renderActionsAdmin() {
+    if (signalement.cibleType === "Projet" && projet) {
+      const dejaSuspendu = projet.statutProjet === "Suspendu";
+      return `
         <div class="mb-6 flex flex-wrap gap-2 border-t border-bordure pt-5">
           ${!dejaSuspendu ? `
             <button id="btnSuspendreProjet" class="flex items-center gap-2 rounded-xl bg-bloque px-4 py-2 text-xs font-bold text-white transition hover:bg-bloque/80">
@@ -127,11 +128,11 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
           </button>
         </div>
       `;
-        }
+    }
 
-        if (signalement.cibleType === "Phase" && phase) {
-            const dejaBloquee = phase.statutPhase === "Bloquer";
-            return `
+    if (signalement.cibleType === "Phase" && phase) {
+      const dejaBloquee = phase.statutPhase === "Bloquer";
+      return `
         <div class="mb-6 flex flex-wrap gap-2 border-t border-bordure pt-5">
           ${dejaBloquee ? `
             <button id="btnDebloquerPhase" class="flex items-center gap-2 rounded-xl bg-succes px-4 py-2 text-xs font-bold text-white transition hover:bg-succes/80">
@@ -147,24 +148,24 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
           </button>
         </div>
       `;
-        }
+    }
 
-        if (signalement.cibleType === "Rapport" && rapport) {
-            return `
+    if (signalement.cibleType === "Rapport" && rapport) {
+      return `
         <div class="mb-6 flex flex-wrap gap-2 border-t border-bordure pt-5">
           <button id="btnSupprimerRapportSignale" class="flex items-center gap-2 rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-muted transition hover:bg-bloque/10 hover:text-bloque">
             <i class="fa-solid fa-trash text-xs"></i> Supprimer le rapport
           </button>
         </div>
       `;
-        }
-
-        return "";
     }
 
-    function renderActionsResolution() {
-        if (signalement.statut === "Résolu" || signalement.statut === "Rejeté") {
-            return `
+    return "";
+  }
+
+  function renderActionsResolution() {
+    if (signalement.statut === "Résolu" || signalement.statut === "Rejeté") {
+      return `
         <div class="flex items-center justify-between border-t border-bordure pt-5">
           <span class="text-xs text-muted">Ce signalement est déjà traité.</span>
           <button id="btnRouvrirSignalement" class="rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-texte transition hover:bg-fond">
@@ -172,8 +173,8 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
           </button>
         </div>
       `;
-        }
-        return `
+    }
+    return `
       <div class="flex flex-wrap items-center justify-end gap-2 border-t border-bordure pt-5">
         <button id="btnRejeterSignalement" class="rounded-xl border border-bordure bg-carte px-4 py-2 text-xs font-bold text-muted transition hover:bg-bloque/10 hover:text-bloque">
           Rejeter
@@ -183,120 +184,122 @@ export function renderSignalementDetail(signalement, contexte, onBack, onSuccess
         </button>
       </div>
     `;
-    }
+  }
 
-    function bindEvents() {
-        document.getElementById("btnRetourSignalements")?.addEventListener("click", onBack);
+  function bindEvents() {
+    document.getElementById("btnRetourSignalements")?.addEventListener("click", onBack);
 
-        document.getElementById("btnVoirProjet")?.addEventListener("click", async () => {
-            const { renderProjetDetail } = await import("../projets/projetDetail.js");
-            await renderProjetDetail(projet.id);
-        });
+    document.getElementById("btnVoirProjet")?.addEventListener("click", async () => {
+      const { renderProjetDetail } = await import("../projets/projetDetail.js");
+      await renderProjetDetail(projet.id);
+    });
 
-        document.getElementById("btnSuspendreProjet")?.addEventListener("click", () => {
-            openConfirm({
-                message: `Suspendre le projet "${projet.nom}" suite à ce signalement ?`,
-                confirmLabel: "Suspendre",
-                onConfirm: async () => {
-                    try {
-                        await updateProjet(projet.id, { ...projet, statutProjet: "Suspendu" });
-                        projet.statutProjet = "Suspendu";
-                        showToast("Projet suspendu.");
-                        render();
-                    } catch (err) {
-                        showToast(err.message, "error");
-                    }
-                },
-            });
-        });
+    document.getElementById("btnSuspendreProjet")?.addEventListener("click", () => {
+      openConfirm({
+        message: `Suspendre le projet "${projet.nom}" suite à ce signalement ?`,
+        confirmLabel: "Suspendre",
+        onConfirm: async () => {
+          try {
+            await updateProjet(projet.id, { ...projet, statutProjet: "Suspendu" });
+            projet.statutProjet = "Suspendu";
+            showToast("Projet suspendu.");
+            render();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        },
+      });
+    });
 
-        document.getElementById("btnBloquerPhase")?.addEventListener("click", () => {
-            openConfirm({
-                message: `Bloquer la phase "${phase.libelle}" suite à ce signalement ?`,
-                confirmLabel: "Bloquer",
-                onConfirm: async () => {
-                    try {
-                        await updatePhase(phase.id, { ...phase, statutPhase: "Bloquer" });
-                        phase.statutPhase = "Bloquer";
-                        showToast("Phase bloquée.");
-                        render();
-                    } catch (err) {
-                        showToast(err.message, "error");
-                    }
-                },
-            });
-        });
+    document.getElementById("btnBloquerPhase")?.addEventListener("click", () => {
+      openConfirm({
+        message: `Bloquer la phase "${phase.libelle}" suite à ce signalement ?`,
+        confirmLabel: "Bloquer",
+        onConfirm: async () => {
+          try {
+            await updatePhase(phase.id, { ...phase, statutPhase: "Bloquer" });
+            phase.statutPhase = "Bloquer";
+            showToast("Phase bloquée.");
+            render();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        },
+      });
+    });
 
-        document.getElementById("btnDebloquerPhase")?.addEventListener("click", () => {
-            openConfirm({
-                message: `Débloquer la phase "${phase.libelle}" ?`,
-                confirmLabel: "Débloquer",
-                onConfirm: async () => {
-                    try {
-                        await updatePhase(phase.id, { ...phase, statutPhase: "En cours" });
-                        phase.statutPhase = "En cours";
-                        showToast("Phase débloquée.");
-                        render();
-                    } catch (err) {
-                        showToast(err.message, "error");
-                    }
-                },
-            });
-        });
+    document.getElementById("btnDebloquerPhase")?.addEventListener("click", () => {
+      openConfirm({
+        message: `Débloquer la phase "${phase.libelle}" ?`,
+        confirmLabel: "Débloquer",
+        onConfirm: async () => {
+          try {
+            await updatePhase(phase.id, { ...phase, statutPhase: "En cours" });
+            phase.statutPhase = "En cours";
+            showToast("Phase débloquée.");
+            render();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        },
+      });
+    });
 
-        document.getElementById("btnSupprimerRapportSignale")?.addEventListener("click", () => {
-            openConfirm({
-                message: "Supprimer ce rapport suite au signalement ? Cette action est irréversible.",
-                confirmLabel: "Supprimer",
-                onConfirm: async () => {
-                    try {
-                        const { supprimerRapport } = await import("../../Services/rapportService.js");
-                        await supprimerRapport(rapport.id);
-                        showToast("Rapport supprimé.");
-                        onBack();
-                    } catch (err) {
-                        showToast(err.message, "error");
-                    }
-                },
-            });
-        });
+    document.getElementById("btnSupprimerRapportSignale")?.addEventListener("click", () => {
+      openConfirm({
+        message: "Supprimer ce rapport suite au signalement ? Cette action est irréversible.",
+        confirmLabel: "Supprimer",
+        onConfirm: async () => {
+          try {
+            const { supprimerRapport } = await import("../../Services/rapportService.js");
+            await supprimerRapport(rapport.id);
+            showToast("Rapport supprimé.");
+            onBack();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        },
+      });
+    });
 
-        document.getElementById("btnResoudreSignalement")?.addEventListener("click", async () => {
-            try {
-                await updateStatutSignalement(signalement.id, "Résolu");
-                signalement.statut = "Résolu";
-                showToast("Signalement marqué comme résolu.");
-                render();
-                await onSuccess();
-            } catch (err) {
-                showToast(err.message, "error");
-            }
-        });
+    document.getElementById("btnResoudreSignalement")?.addEventListener("click", async () => {
+      try {
+        await updateStatutSignalement(signalement.id, "Résolu");
+        signalement.statut = "Résolu";
+        showToast("Signalement marqué comme résolu.");
+        render();
+        await onSuccess();
+        refreshSidebarBadges();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
 
-        document.getElementById("btnRejeterSignalement")?.addEventListener("click", async () => {
-            try {
-                await updateStatutSignalement(signalement.id, "Rejeté");
-                signalement.statut = "Rejeté";
-                showToast("Signalement rejeté.");
-                render();
-                await onSuccess();
-            } catch (err) {
-                showToast(err.message, "error");
-            }
-        });
+    document.getElementById("btnRejeterSignalement")?.addEventListener("click", async () => {
+      try {
+        await updateStatutSignalement(signalement.id, "Rejeté");
+        signalement.statut = "Rejeté";
+        showToast("Signalement rejeté.");
+        render();
+        await onSuccess();
+        refreshSidebarBadges();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
 
-        document.getElementById("btnRouvrirSignalement")?.addEventListener("click", async () => {
-            try {
-                await updateStatutSignalement(signalement.id, "En traitement");
-                signalement.statut = "En traitement";
-                showToast("Signalement rouvert.");
-                render();
-                await onSuccess();
-            } catch (err) {
-                showToast(err.message, "error");
-            }
-        });
-    }
+    document.getElementById("btnRouvrirSignalement")?.addEventListener("click", async () => {
+      try {
+        await updateStatutSignalement(signalement.id, "En traitement");
+        signalement.statut = "En traitement";
+        showToast("Signalement rouvert.");
+        render();
+        await onSuccess();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  }
 
-    render();
+  render();
 }

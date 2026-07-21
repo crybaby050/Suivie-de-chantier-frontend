@@ -12,7 +12,7 @@ import {
     getBrickCycleDuration
 } from "./Components/brickLoader.js";
 import { renderValidationTachesPage } from "./Pages/validationTachesPage.js";
-import { renderMessageriePage } from "./Pages/messagerie/messageriePage.js";
+import { renderMessageriePage } from "./Pages/messageries/messageriePage.js";
 
 
 const routes = {

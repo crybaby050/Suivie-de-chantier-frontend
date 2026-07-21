@@ -21,9 +21,9 @@ export function renderMessagerieThread({ conversation, messages, session, utilis
     }
 
     return `
-    <div class="flex h-full flex-col bg-fond">
+    <div class="flex h-full min-h-0 flex-col bg-fond">
 
-      <div class="flex items-center gap-3 border-b border-bordure bg-carte px-4 py-3.5">
+      <div class="flex flex-shrink-0 items-center gap-3 border-b border-bordure bg-carte px-4 py-3.5">
         <button id="btnRetourListe" class="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-fond md:hidden">
           <i class="fa-solid fa-arrow-left text-xs"></i>
         </button>
@@ -37,14 +37,14 @@ export function renderMessagerieThread({ conversation, messages, session, utilis
         </div>
       </div>
 
-      <div id="messagesScrollZone" class="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        <div id="messagesScrollZone" class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         ${messages.length === 0
             ? `<p class="py-8 text-center text-xs italic text-muted">Aucun message pour l'instant. Dites bonjour.</p>`
             : messages.map(m => renderBulle(m, session, utilisateursParId, conversation.type)).join("")
         }
       </div>
 
-      <div class="border-t border-bordure bg-carte p-3">
+        <div class="flex-shrink-0 border-t border-bordure bg-carte p-3">
         ${fichiersEnAttente.length > 0 ? `
           <div class="mb-2 flex flex-wrap gap-2">
             ${fichiersEnAttente.map((f, i) => `
@@ -108,8 +108,13 @@ function renderBulle(message, session, utilisateursParId, typeConv) {
   `;
 }
 
+let conversationIdPrecedente = null;
+
 export function bindThreadEvents({ conversationId, onEnvoye, onRetour, onSupprime }) {
-    fichiersEnAttente = [];
+    if (conversationId !== conversationIdPrecedente) {
+        fichiersEnAttente = [];
+        conversationIdPrecedente = conversationId;
+    }
 
     document.getElementById("btnRetourListe")?.addEventListener("click", onRetour);
 

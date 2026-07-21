@@ -220,6 +220,14 @@ export async function renderProjetDetail(projetId) {
             });
         });
 
+        document.querySelectorAll(".btn-edit-phase").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const phase = phases.find(p => p.id === btn.dataset.phaseId);
+                if (!phase) return;
+                openPhaseForm(projetId, reload, phase);
+            });
+        });
+
         if (activeTab === "overview" && canManage()) {
             initMembresOuvriersWidget(document.getElementById("membresOuvriersWidget"), {
                 projetId,
