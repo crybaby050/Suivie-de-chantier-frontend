@@ -156,6 +156,8 @@ function bindLoginEvents() {
   emailInput.addEventListener("input", () => clearError("loginEmail", "loginEmailError"));
   passInput.addEventListener("input",  () => clearError("loginPassword", "loginPasswordError"));
 
+  const btnIcon = document.getElementById("loginBtnIcon");
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -178,8 +180,7 @@ function bindLoginEvents() {
 
     if (!valid) return;
 
-    btn.disabled = true;
-    btnText.textContent = "Connexion...";
+    setFormLoading(true);
 
     try {
       await login(email, password);
@@ -187,10 +188,24 @@ function bindLoginEvents() {
       window.dispatchEvent(new CustomEvent("app:login"));
     } catch (error) {
       showToast(error.message, "error");
-      btn.disabled = false;
-      btnText.textContent = "Login";
+      setFormLoading(false);
     }
   });
+
+  function setFormLoading(isLoading) {
+    btn.disabled = isLoading;
+    emailInput.disabled = isLoading;
+    passInput.disabled = isLoading;
+    toggleBtn.disabled = isLoading;
+
+    if (isLoading) {
+      btnIcon.className = "fa-solid fa-spinner animate-spin";
+      btnText.textContent = "Connexion...";
+    } else {
+      btnIcon.className = "fa-solid fa-arrow-right-to-bracket";
+      btnText.textContent = "Login";
+    }
+  }
 }
 
 function showFieldError(inputId, errorId, message) {
