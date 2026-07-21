@@ -117,9 +117,9 @@ export function renderLoginPage() {
             <button
               type="submit"
               id="loginBtn"
-              class="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white shadow-soft transition hover:bg-secondary disabled:opacity-60"
+              class="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-white shadow-soft transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <i class="fa-solid fa-arrow-right-to-bracket"></i>
+              <i id="loginBtnIcon" class="fa-solid fa-arrow-right-to-bracket"></i>
               <span id="loginBtnText">Login</span>
             </button>
 
