@@ -62,16 +62,62 @@ export function renderNavbar() {
           <!-- Badge rôle -->
           <div class="hidden sm:block">${roleBadge}</div>
 
-          <!-- Avatar + nom -->
-          <div class="flex items-center gap-2 cursor-pointer rounded-xl px-2 py-1 transition hover:bg-white/10">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white">
-              <i class="fa-solid fa-user text-xs"></i>
-            </div>
-            <span class="hidden text-sm font-semibold text-white md:block truncate max-w-[120px]">
-              ${session?.nom ?? ""}
-            </span>
-            <i class="fa-solid fa-chevron-down text-xs text-white/60 hidden md:block"></i>
-          </div>
+          <!-- Avatar + nom + dropdown -->
+<div class="relative">
+  <button
+    id="navbarAvatarBtn"
+    class="flex items-center gap-2 cursor-pointer rounded-xl px-2 py-1 transition hover:bg-white/10"
+  >
+    <div id="navbarAvatar" class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white overflow-hidden">
+      ${session?.photoUrl
+        ? `<img src="${escapeHtml(session.photoUrl)}" class="h-full w-full object-cover" />`
+        : `<i class="fa-solid fa-user text-xs"></i>`
+      }
+    </div>
+    <span class="hidden text-sm font-semibold text-white md:block truncate max-w-[120px]">
+      ${session?.nom ?? ""}
+    </span>
+    <i class="fa-solid fa-chevron-down text-xs text-white/60 hidden md:block" id="navbarChevron"></i>
+  </button>
+
+  <!-- Dropdown -->
+  <div
+    id="navbarDropdown"
+    class="absolute right-0 top-full mt-2 hidden w-64 rounded-2xl border border-bordure bg-carte shadow-soft z-50"
+  >
+    <!-- Infos utilisateur -->
+    <div class="flex items-center gap-3 border-b border-bordure p-4">
+      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary overflow-hidden">
+        ${session?.photoUrl
+          ? `<img src="${escapeHtml(session.photoUrl)}" class="h-full w-full object-cover" />`
+          : `<i class="fa-solid fa-user text-sm"></i>`
+        }
+      </div>
+      <div class="min-w-0">
+        <p class="truncate text-sm font-black text-texte">${escapeHtml(session?.nom ?? "")}</p>
+        <p class="truncate text-xs text-muted">${escapeHtml(session?.email ?? "")}</p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="p-2">
+      <button
+        id="btnOuvrirProfil"
+        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-texte transition hover:bg-fond"
+      >
+        <i class="fa-solid fa-user-pen text-muted text-xs"></i>
+        Mon profil
+      </button>
+      <button
+        id="logoutBtnDropdown"
+        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-bloque transition hover:bg-bloque/10"
+      >
+        <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+        Se déconnecter
+      </button>
+    </div>
+  </div>
+</div>
 
         </div>
       </div>
@@ -91,8 +137,37 @@ export function renderNavbar() {
   `;
 }
 
-export function initNavbar() {
-  const toggle = document.getElementById("mobileSearchToggle");
-  const bar    = document.getElementById("mobileSearchBar");
+export function initNavbar(onLogout, onProfilOpen) {
+  const toggle   = document.getElementById("mobileSearchToggle");
+  const bar      = document.getElementById("mobileSearchBar");
+  const avatarBtn = document.getElementById("navbarAvatarBtn");
+  const dropdown  = document.getElementById("navbarDropdown");
+  const chevron   = document.getElementById("navbarChevron");
+
   toggle?.addEventListener("click", () => bar.classList.toggle("hidden"));
+
+  // Toggle dropdown
+  avatarBtn?.addEventListener("click", e => {
+    e.stopPropagation();
+    const isOpen = !dropdown.classList.contains("hidden");
+    dropdown.classList.toggle("hidden", isOpen);
+    chevron?.classList.toggle("rotate-180", !isOpen);
+  });
+
+  // Fermer en cliquant ailleurs
+  document.addEventListener("click", () => {
+    dropdown?.classList.add("hidden");
+    chevron?.classList.remove("rotate-180");
+  });
+
+  // Ouvrir profil
+  document.getElementById("btnOuvrirProfil")?.addEventListener("click", () => {
+    dropdown?.classList.add("hidden");
+    if (onProfilOpen) onProfilOpen();
+  });
+
+  // Déconnexion depuis dropdown
+  document.getElementById("logoutBtnDropdown")?.addEventListener("click", () => {
+    if (onLogout) onLogout();
+  });
 }
