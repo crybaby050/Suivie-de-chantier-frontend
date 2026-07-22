@@ -46,7 +46,6 @@ function canAccess(page) {
 }
 
 export async function navigate(page = "dashboard") {
-    console.log("1 - navigate() appelé avec :", page); // TEST
 
     if (!requireAuth()) return;
 
@@ -57,7 +56,6 @@ export async function navigate(page = "dashboard") {
 
     const app = document.getElementById("app");
     const route = routes[page] ?? routes.dashboard;
-    console.log("2 - route sélectionnée, sur le point d'appeler route()"); // TEST
 
 
     // Mettre à jour les liens actifs dans la sidebar
@@ -97,19 +95,16 @@ export async function navigate(page = "dashboard") {
     });
 
     try {
-        console.log("3 - juste avant Promise.all"); // TEST
 
         const cycleDuration = getBrickCycleDuration(3, 6, 55);
         await Promise.all([
             route(),
             new Promise((resolve) => setTimeout(resolve, cycleDuration)),
         ]);
-        console.log("4 - Promise.all terminé avec succès"); // TEST
 
         stopLoader();
     }
     catch (error) {
-        console.log("5 - ERREUR attrapée :", error); // TEST
 
         stopLoader();
 

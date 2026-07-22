@@ -139,8 +139,8 @@ export function renderNavbar() {
 }
 
 export function initNavbar(onLogout, onProfilOpen) {
-  const toggle   = document.getElementById("mobileSearchToggle");
-  const bar      = document.getElementById("mobileSearchBar");
+  const toggle    = document.getElementById("mobileSearchToggle");
+  const bar       = document.getElementById("mobileSearchBar");
   const avatarBtn = document.getElementById("navbarAvatarBtn");
   const dropdown  = document.getElementById("navbarDropdown");
   const chevron   = document.getElementById("navbarChevron");
@@ -155,20 +155,25 @@ export function initNavbar(onLogout, onProfilOpen) {
     chevron?.classList.toggle("rotate-180", !isOpen);
   });
 
-  // Fermer en cliquant ailleurs
-  document.addEventListener("click", () => {
-    dropdown?.classList.add("hidden");
-    chevron?.classList.remove("rotate-180");
+  // Fermer en cliquant ailleurs — mais PAS sur les boutons du dropdown
+  document.addEventListener("click", e => {
+    if (dropdown && !dropdown.contains(e.target) && e.target !== avatarBtn && !avatarBtn?.contains(e.target)) {
+      dropdown.classList.add("hidden");
+      chevron?.classList.remove("rotate-180");
+    }
   });
 
   // Ouvrir profil
-  document.getElementById("btnOuvrirProfil")?.addEventListener("click", () => {
+  document.getElementById("btnOuvrirProfil")?.addEventListener("click", e => {
+    e.stopPropagation();
     dropdown?.classList.add("hidden");
+    chevron?.classList.remove("rotate-180");
     if (onProfilOpen) onProfilOpen();
   });
 
   // Déconnexion depuis dropdown
-  document.getElementById("logoutBtnDropdown")?.addEventListener("click", () => {
+  document.getElementById("logoutBtnDropdown")?.addEventListener("click", e => {
+    e.stopPropagation();
     if (onLogout) onLogout();
   });
 }
