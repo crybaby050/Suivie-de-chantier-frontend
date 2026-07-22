@@ -5,19 +5,38 @@ import { requireAuth, isAdmin, isChef, isOuvrier, isClient } from "./Utils/auth.
 import { logout }                     from "./Services/authService.js";
 import { renderLoginPage }            from "./Pages/loginPage.js";
 import { showToast }                  from "./Components/toast.js";
+import { openProfilDrawer } from "./Components/profilDrawer.js";
 
-function mountLayout() {
-    document.getElementById("sidebarRoot").innerHTML = renderSidebar();
-    document.getElementById("navbarRoot").innerHTML = renderNavbar();
-}
 
 function initLogout() {
-    document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        logout();
-        showToast("Vous êtes déconnecté.");
-        startApp();
-    });
+  // Logout depuis sidebar (garder pour compatibilité)
+  document.getElementById("logoutBtn")?.addEventListener("click", () => {
+    logout();
+    showToast("Vous êtes déconnecté.");
+    startApp();
+  });
 }
+
+function mountLayout() {
+  document.getElementById("sidebarRoot").innerHTML = renderSidebar();
+  document.getElementById("navbarRoot").innerHTML  = renderNavbar();
+}
+
+// Dans startApp(), remplace initNavbar() par :
+initNavbar(
+  () => {
+    logout();
+    showToast("Vous êtes déconnecté.");
+    startApp();
+  },
+  () => {
+    openProfilDrawer(async () => {
+      // Rafraîchir la navbar après modification du profil
+      document.getElementById("navbarRoot").innerHTML = renderNavbar();
+      initNavbar(/* ... */);
+    });
+  }
+);
 
 function initNavigation(sidebar) {
     document.querySelectorAll("[data-page]").forEach((button) => {
