@@ -1,4 +1,5 @@
 import { getSession } from "../Utils/auth.js";
+import { escapeHtml } from "../Utils/html.js";
 
 export function renderNavbar() {
   const session = getSession();
