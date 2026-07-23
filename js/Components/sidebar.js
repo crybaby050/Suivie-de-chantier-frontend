@@ -81,16 +81,6 @@ export function renderSidebar() {
         </div>
       </nav>
 
-      <!-- Profil + logout -->
-      <div class="flex-shrink-0 border-t border-bordure p-3">
-        <button
-          id="logoutBtn"
-          class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-bloque transition hover:bg-bloque/10"
-        >
-          <i class="fa-solid fa-arrow-right-from-bracket text-xs flex-shrink-0"></i>
-          <span class="sidebar-text">Se déconnecter</span>
-        </button>
-      </div>
     </aside>
   `;
 }
