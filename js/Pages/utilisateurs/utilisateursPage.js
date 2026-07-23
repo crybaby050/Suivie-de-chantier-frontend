@@ -33,9 +33,10 @@ export async function renderUtilisateursPage() {
 function renderPage() {
   const app = document.getElementById("app");
 
-  const FILTERS = ["Tout", "Admin", "Chef de chantier", "Ouvrier", "Client"];
+  const FILTERS = ["Tout", "Chef de chantier", "Ouvrier", "Client"];
 
   const filtered = allUtilisateurs
+    .filter(u => u.roleGlobal !== "Admin")
     .filter(u => currentFilter === "Tout" || u.roleGlobal === currentFilter)
     .filter(u => !searchQuery ||
       u.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
