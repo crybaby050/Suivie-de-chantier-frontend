@@ -83,17 +83,6 @@ export function renderSidebar() {
 
       <!-- Profil + logout -->
       <div class="flex-shrink-0 border-t border-bordure p-3">
-        <div class="sidebar-text mb-2 flex items-center gap-3 rounded-xl bg-fond px-3 py-2.5">
-          <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <i class="fa-solid fa-user text-xs"></i>
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-xs font-bold text-texte">
-              ${escapeHtml(session?.nom ?? session?.email ?? "")}
-            </p>
-            <div class="mt-0.5">${roleBadge}</div>
-          </div>
-        </div>
         <button
           id="logoutBtn"
           class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-bloque transition hover:bg-bloque/10"

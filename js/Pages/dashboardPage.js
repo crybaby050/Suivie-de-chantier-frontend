@@ -6,54 +6,58 @@ import { escapeHtml } from "../Utils/html.js";
 import { getPhases } from "../Services/phaseService.js";
 import { calculerProgressionPhase, calculerProgressionProjet } from "../Utils/progressionHelpers.js";
 import { filtrerProjetsAccessibles } from "../Utils/projetAccessHelpers.js";
+import { showBrickLoader, brickCycleDelay } from "../Utils/pageLoader.js";
 
 export async function renderDashboardPage() {
-    console.log("Dashboard appelé");
-    const app = document.getElementById("app");
-    const session = getSession();
+  const app = document.getElementById("app");
+  const session = getSession();
 
-    // Chargement des données
-    const [projetsBruts, tachesBrutes, utilisateurs, phases] = await Promise.all([
-        getProjets(),
-        getTaches(),
-        isAdmin() ? getUtilisateurs() : Promise.resolve([]),
-        getPhases(),
-    ]);
+  const stopLoader = showBrickLoader(app);
 
-    const projets = await filtrerProjetsAccessibles(projetsBruts, session);
-    const projetIdsAccessibles = new Set(projets.map(p => p.id));
-    const phasesAccessibles = phases.filter(ph => projetIdsAccessibles.has(ph.projetId));
-    const phaseIdsAccessibles = new Set(phasesAccessibles.map(ph => ph.id));
-    const taches = tachesBrutes.filter(t => phaseIdsAccessibles.has(t.phaseId));
+  // Chargement des données
+  const [projetsBruts, tachesBrutes, utilisateurs, phases] = await Promise.all([
+    getProjets(),
+    getTaches(),
+    isAdmin() ? getUtilisateurs() : Promise.resolve([]),
+    getPhases(),
+    brickCycleDelay(),
+  ]);
 
-    const progressionParProjet = {};
-    projets.forEach(projet => {
-        const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
-        const phasesAvecProgression = phasesDuProjet.map(phase => ({
-            ...phase,
-            progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
-        }));
-        progressionParProjet[projet.id] = calculerProgressionProjet(phasesAvecProgression);
-    });
+  const projets = await filtrerProjetsAccessibles(projetsBruts, session);
+  const projetIdsAccessibles = new Set(projets.map(p => p.id));
+  const phasesAccessibles = phases.filter(ph => projetIdsAccessibles.has(ph.projetId));
+  const phaseIdsAccessibles = new Set(phasesAccessibles.map(ph => ph.id));
+  const taches = tachesBrutes.filter(t => phaseIdsAccessibles.has(t.phaseId));
 
-    // Calculs stats
-    const projetsActifs = projets.filter(p => p.statutProjet === "En cours");
-    const projetTermines = projets.filter(p => p.statutProjet === "Terminer");
-    
+  const progressionParProjet = {};
+  projets.forEach(projet => {
+    const phasesDuProjet = phases.filter(p => p.projetId === projet.id);
+    const phasesAvecProgression = phasesDuProjet.map(phase => ({
+      ...phase,
+      progression: calculerProgressionPhase(taches.filter(t => t.phaseId === phase.id)),
+    }));
+    progressionParProjet[projet.id] = calculerProgressionProjet(phasesAvecProgression);
+  });
 
-    const tachesEnAttente = taches.filter(t => t.statutTache === "A faire");
-    const tachesEnCours = taches.filter(t => t.statutTache === "En cours");
-    const tachesTerminees = taches.filter(t => t.statutTache === "Terminer");
-    const tachesAValider = taches.filter(t => t.statutTache === "Valider");
+  // Calculs stats
+  const projetsActifs = projets.filter(p => p.statutProjet === "En cours");
+  const projetTermines = projets.filter(p => p.statutProjet === "Terminer");
 
-    const progressionGlobale = taches.length
-        ? Math.round(taches.reduce((sum, t) => sum + (t.progression || 0), 0) / taches.length)
-        : 0;
 
-    // Stats selon rôle
-    const stats = buildStats({ projets, projetsActifs, projetTermines, taches, tachesEnCours, tachesTerminees, utilisateurs, progressionGlobale });
+  const tachesEnAttente = taches.filter(t => t.statutTache === "A faire");
+  const tachesEnCours = taches.filter(t => t.statutTache === "En cours");
+  const tachesTerminees = taches.filter(t => t.statutTache === "Terminer");
+  const tachesAValider = taches.filter(t => t.statutTache === "Valider");
 
-    app.innerHTML = `
+  const progressionGlobale = taches.length
+    ? Math.round(taches.reduce((sum, t) => sum + (t.progression || 0), 0) / taches.length)
+    : 0;
+
+  // Stats selon rôle
+  const stats = buildStats({ projets, projetsActifs, projetTermines, taches, tachesEnCours, tachesTerminees, utilisateurs, progressionGlobale });
+
+  stopLoader();
+  app.innerHTML = `
     <div class="space-y-6">
 
       <!-- En-tête -->
@@ -104,12 +108,12 @@ export async function renderDashboardPage() {
 
           <div class="space-y-4">
             ${projets.length === 0
-            ? `<p class="py-6 text-center text-sm text-muted">Aucun projet enregistré.</p>`
-            : projets.slice(0, 5).map(projet => {
-                const progression = progressionParProjet[projet.id] ?? 0;
-                const statutColor = getStatutColor(projet.statutProjet);
+      ? `<p class="py-6 text-center text-sm text-muted">Aucun projet enregistré.</p>`
+      : projets.slice(0, 5).map(projet => {
+        const progression = progressionParProjet[projet.id] ?? 0;
+        const statutColor = getStatutColor(projet.statutProjet);
 
-                return `
+        return `
                     <div class="group">
                       <div class="mb-1.5 flex items-center justify-between">
                         <div class="flex items-center gap-2 min-w-0">
@@ -134,8 +138,8 @@ export async function renderDashboardPage() {
                       </div>
                     </div>
                   `;
-            }).join("")
-        }
+      }).join("")
+    }
           </div>
         </div>
 
@@ -158,8 +162,8 @@ export async function renderDashboardPage() {
 
           <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
             ${tachesEnAttente.length === 0
-            ? `<p class="py-6 text-center text-sm text-muted">Aucune tâche en attente.</p>`
-            : tachesEnAttente.slice(0, 6).map(tache => `
+      ? `<p class="py-6 text-center text-sm text-muted">Aucune tâche en attente.</p>`
+      : tachesEnAttente.slice(0, 6).map(tache => `
                 <div class="flex items-start gap-3 rounded-xl bg-fond p-3">
                   <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-attente/10">
                     <i class="fa-solid fa-clock text-xs text-attente"></i>
@@ -168,8 +172,8 @@ export async function renderDashboardPage() {
                     <p class="truncate text-sm font-semibold text-texte">${escapeHtml(tache.titre)}</p>
                     <p class="text-xs text-muted">
                       Échéance : ${tache.dateDeFin
-                    ? new Date(tache.dateDeFin).toLocaleDateString("fr-FR")
-                    : "—"}
+          ? new Date(tache.dateDeFin).toLocaleDateString("fr-FR")
+          : "—"}
                     </p>
                   </div>
                   <span class="flex-shrink-0 rounded-full bg-attente/10 px-2 py-0.5 text-[10px] font-bold text-attente">
@@ -177,7 +181,7 @@ export async function renderDashboardPage() {
                   </span>
                 </div>
               `).join("")
-        }
+    }
           </div>
         </div>
 
@@ -234,57 +238,57 @@ export async function renderDashboardPage() {
     </div>
   `;
 
-    // Réattacher les événements de navigation sur les boutons "Voir tout" / "Voir plus"
-    document.querySelectorAll("[data-page]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            const { navigate } = await import("../router.js");
-            await navigate(btn.dataset.page);
-        });
+  // Réattacher les événements de navigation sur les boutons "Voir tout" / "Voir plus"
+  document.querySelectorAll("[data-page]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const { navigate } = await import("../router.js");
+      await navigate(btn.dataset.page);
     });
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function buildStats({ projets, projetsActifs, projetTermines, taches, tachesEnCours, tachesTerminees, utilisateurs, progressionGlobale }) {
-    if (isAdmin()) {
-        return [
-            { label: "Projets actifs", value: projetsActifs.length, sub: `${projets.length} au total`, icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
-            { label: "Progression moyenne", value: `${progressionGlobale}%`, sub: "sur toutes les tâches", icon: "fa-chart-pie", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
-            { label: "Utilisateurs", value: utilisateurs.length, sub: "comptes actifs", icon: "fa-users", iconBg: "bg-role-admin/10", iconColor: "text-role-admin" },
-            { label: "Projets achevés", value: projetTermines.length, sub: `${projets.length} au total`, icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
-        ];
-    }
-    if (isChef()) {
-        return [
-            { label: "Mes projets", value: projetsActifs.length, sub: `${projets.length} au total`, icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
-            { label: "Tâches en cours", value: tachesEnCours.length, sub: "à superviser", icon: "fa-list-check", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
-            { label: "Tâches terminées", value: tachesTerminees.length, sub: "complétées", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
-            { label: "Progression globale", value: `${progressionGlobale}%`, sub: "sur toutes les tâches", icon: "fa-chart-pie", iconBg: "bg-accent/10", iconColor: "text-accent" },
-        ];
-    }
-    if (isOuvrier()) {
-        return [
-            { label: "Mes tâches", value: taches.length, sub: "assignées", icon: "fa-list-check", iconBg: "bg-role-ouvrier/10", iconColor: "text-role-ouvrier" },
-            { label: "En cours", value: tachesEnCours.length, sub: "à compléter", icon: "fa-spinner", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
-            { label: "Terminées", value: tachesTerminees.length, sub: "complétées", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
-            { label: "Progression", value: `${progressionGlobale}%`, sub: "de mes tâches", icon: "fa-chart-pie", iconBg: "bg-primary/10", iconColor: "text-primary" },
-        ];
-    }
-    // Client
+  if (isAdmin()) {
     return [
-        { label: "Projets suivis", value: projets.length, sub: "en cours", icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
-        { label: "Avancement", value: `${progressionGlobale}%`, sub: "progression globale", icon: "fa-chart-pie", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
-        { label: "Projets actifs", value: projetsActifs.length, sub: "en cours", icon: "fa-spinner", iconBg: "bg-attente/10", iconColor: "text-attente" },
-        { label: "Projets achevés", value: projetTermines.length, sub: "terminés", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
+      { label: "Projets actifs", value: projetsActifs.length, sub: `${projets.length} au total`, icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
+      { label: "Progression moyenne", value: `${progressionGlobale}%`, sub: "sur toutes les tâches", icon: "fa-chart-pie", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
+      { label: "Utilisateurs", value: utilisateurs.length, sub: "comptes actifs", icon: "fa-users", iconBg: "bg-role-admin/10", iconColor: "text-role-admin" },
+      { label: "Projets achevés", value: projetTermines.length, sub: `${projets.length} au total`, icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
     ];
+  }
+  if (isChef()) {
+    return [
+      { label: "Mes projets", value: projetsActifs.length, sub: `${projets.length} au total`, icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
+      { label: "Tâches en cours", value: tachesEnCours.length, sub: "à superviser", icon: "fa-list-check", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
+      { label: "Tâches terminées", value: tachesTerminees.length, sub: "complétées", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
+      { label: "Progression globale", value: `${progressionGlobale}%`, sub: "sur toutes les tâches", icon: "fa-chart-pie", iconBg: "bg-accent/10", iconColor: "text-accent" },
+    ];
+  }
+  if (isOuvrier()) {
+    return [
+      { label: "Mes tâches", value: taches.length, sub: "assignées", icon: "fa-list-check", iconBg: "bg-role-ouvrier/10", iconColor: "text-role-ouvrier" },
+      { label: "En cours", value: tachesEnCours.length, sub: "à compléter", icon: "fa-spinner", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
+      { label: "Terminées", value: tachesTerminees.length, sub: "complétées", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
+      { label: "Progression", value: `${progressionGlobale}%`, sub: "de mes tâches", icon: "fa-chart-pie", iconBg: "bg-primary/10", iconColor: "text-primary" },
+    ];
+  }
+  // Client
+  return [
+    { label: "Projets suivis", value: projets.length, sub: "en cours", icon: "fa-building", iconBg: "bg-primary/10", iconColor: "text-primary" },
+    { label: "Avancement", value: `${progressionGlobale}%`, sub: "progression globale", icon: "fa-chart-pie", iconBg: "bg-secondary/10", iconColor: "text-secondary" },
+    { label: "Projets actifs", value: projetsActifs.length, sub: "en cours", icon: "fa-spinner", iconBg: "bg-attente/10", iconColor: "text-attente" },
+    { label: "Projets achevés", value: projetTermines.length, sub: "terminés", icon: "fa-circle-check", iconBg: "bg-succes/10", iconColor: "text-succes" },
+  ];
 }
 
 function getStatutColor(statut) {
-    const colors = {
-        "En cours": { dot: "bg-secondary", bar: "bg-secondary" },
-        "Planifier": { dot: "bg-attente", bar: "bg-attente" },
-        "Terminer": { dot: "bg-succes", bar: "bg-succes" },
-        "Suspendu": { dot: "bg-inactif", bar: "bg-inactif" },
-    };
-    return colors[statut] ?? { dot: "bg-muted", bar: "bg-muted" };
+  const colors = {
+    "En cours": { dot: "bg-secondary", bar: "bg-secondary" },
+    "Planifier": { dot: "bg-attente", bar: "bg-attente" },
+    "Terminer": { dot: "bg-succes", bar: "bg-succes" },
+    "Suspendu": { dot: "bg-inactif", bar: "bg-inactif" },
+  };
+  return colors[statut] ?? { dot: "bg-muted", bar: "bg-muted" };
 }

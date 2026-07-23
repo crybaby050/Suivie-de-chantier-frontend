@@ -7,6 +7,7 @@ import { apiRequest } from "../../Services/apiClient.js";
 import { ENDPOINTS } from "../../Config/api.js";
 import { renderUserCard } from "./utilisateurCard.js";
 import { openUserForm } from "./utilisateurForm.js";
+import { showBrickLoader, brickCycleDelay } from "../../Utils/pageLoader.js";
 
 // ─── État local ───────────────────────────────────────────────────────────────
 let allUtilisateurs = [];
@@ -17,16 +18,14 @@ let searchQuery     = "";
 export async function renderUtilisateursPage() {
   const app = document.getElementById("app");
 
-  app.innerHTML = `
-    <div class="grid min-h-[60vh] place-items-center">
-      <div class="flex flex-col items-center gap-3">
-        <div class="h-10 w-10 animate-spin rounded-full border-4 border-bordure border-t-primary"></div>
-        <p class="text-sm font-semibold text-muted">Chargement...</p>
-      </div>
-    </div>
-  `;
+  const stopLoader = showBrickLoader(app);
 
-  allUtilisateurs = await getUtilisateurs();
+  [allUtilisateurs] = await Promise.all([
+    getUtilisateurs(),
+    brickCycleDelay(),
+  ]);
+
+  stopLoader();
   renderPage();
 }
 
@@ -34,9 +33,10 @@ export async function renderUtilisateursPage() {
 function renderPage() {
   const app = document.getElementById("app");
 
-  const FILTERS = ["Tout", "Admin", "Chef de chantier", "Ouvrier", "Client"];
+  const FILTERS = ["Tout", "Chef de chantier", "Ouvrier", "Client"];
 
   const filtered = allUtilisateurs
+    .filter(u => u.roleGlobal !== "Admin")
     .filter(u => currentFilter === "Tout" || u.roleGlobal === currentFilter)
     .filter(u => !searchQuery ||
       u.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
